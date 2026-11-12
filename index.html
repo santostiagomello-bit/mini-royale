@@ -208,7 +208,110 @@ const gun = new THREE.Mesh(
 gun.position.set(0.38,1.05,-0.55);
 player.add(gun);
 
+
+// PERSONAGEM 3D CARTOON
+const player = new THREE.Group();
+scene.add(player);
+
+function part(geometry, color, x, y, z) {
+  const mesh = new THREE.Mesh(
+    geometry,
+    new THREE.MeshStandardMaterial({color})
+  );
+  mesh.position.set(x,y,z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  player.add(mesh);
+  return mesh;
+}
+
+// CORES
+const uniform = 0x405b39;
+const dark = 0x26372a;
+const skin = 0xd6a477;
+const vestColor = 0x596b43;
+const bootColor = 0x292b25;
+
+// PERNAS
+part(new THREE.CylinderGeometry(0.16,0.17,0.65,10),
+  uniform,-0.22,0.48,0);
+part(new THREE.CylinderGeometry(0.16,0.17,0.65,10),
+  uniform,0.22,0.48,0);
+
+// JOELHOS
+part(new THREE.SphereGeometry(0.17,10,8),
+  vestColor,-0.22,0.25,0);
+part(new THREE.SphereGeometry(0.17,10,8),
+  vestColor,0.22,0.25,0);
+
+// BOTAS
+part(new THREE.BoxGeometry(0.32,0.2,0.42),
+  bootColor,-0.22,0.1,-0.08);
+part(new THREE.BoxGeometry(0.32,0.2,0.42),
+  bootColor,0.22,0.1,-0.08);
+
+// CORPO
+part(new THREE.BoxGeometry(0.76,0.82,0.42),
+  uniform,0,1.12,0);
+
+// COLETE
+part(new THREE.BoxGeometry(0.83,0.58,0.48),
+  vestColor,0,1.15,-0.025);
+
+// DETALHES DO COLETE
+part(new THREE.BoxGeometry(0.2,0.25,0.04),
+  dark,-0.23,1.13,-0.27);
+part(new THREE.BoxGeometry(0.2,0.25,0.04),
+  dark,0.23,1.13,-0.27);
+part(new THREE.BoxGeometry(0.12,0.4,0.04),
+  dark,0,1.12,-0.28);
+
+// MOCHILA
+part(new THREE.BoxGeometry(0.58,0.65,0.25),
+  dark,0,1.2,0.32);
+
+// CABEÇA
+part(new THREE.SphereGeometry(0.34,16,12),
+  skin,0,1.85,0);
+
+// CAPACETE
+part(new THREE.SphereGeometry(0.39,16,10,0,Math.PI*2,0,Math.PI/2),
+  0x40552e,0,2.04,0);
+
+// ABA DO CAPACETE
+part(new THREE.CylinderGeometry(0.4,0.4,0.09,16),
+  0x344629,0,1.99,0);
+
+// BRAÇOS
+const armL = part(
+  new THREE.CylinderGeometry(0.13,0.15,0.65,10),
+  uniform,-0.51,1.15,0
+);
+armL.rotation.z = -0.25;
+
+const armR = part(
+  new THREE.CylinderGeometry(0.13,0.15,0.65,10),
+  uniform,0.51,1.15,-0.05
+);
+armR.rotation.z = 0.25;
+
+// LUVAS
+part(new THREE.SphereGeometry(0.14,10,8),
+  dark,-0.58,0.82,-0.1);
+part(new THREE.SphereGeometry(0.14,10,8),
+  dark,0.58,0.82,-0.25);
+
+// RIFLE
+part(new THREE.BoxGeometry(0.14,0.14,0.85),
+  0x292929,0.28,1.05,-0.48);
+part(new THREE.BoxGeometry(0.19,0.2,0.25),
+  0x414141,0.28,1.05,-0.2);
+part(new THREE.BoxGeometry(0.1,0.32,0.12),
+  0x292929,0.28,0.83,-0.25);
+
+// POSIÇÃO INICIAL
 player.position.set(0,0,0);
+  
 
 // JOYSTICK
 const pad = document.getElementById('pad');
