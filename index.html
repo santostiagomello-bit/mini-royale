@@ -59,6 +59,7 @@ canvas { display: block; }
 </style>
 </head>
 <body>
+
 <div id="title">MINI ROYALE</div>
 <div id="pad"><div id="stick"></div></div>
 <div id="hint">Arraste o joystick para andar</div>
@@ -67,6 +68,7 @@ canvas { display: block; }
 import * as THREE from
 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
+// CENA
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x9bc9dc);
 
@@ -77,10 +79,11 @@ camera.position.set(0, 15, 15);
 
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
+// LUZES
 scene.add(new THREE.HemisphereLight(0xffffff, 0x536344, 2));
 
 const sun = new THREE.DirectionalLight(0xffffff, 2);
@@ -106,6 +109,7 @@ path.rotation.x = -Math.PI / 2;
 path.position.set(0, 0.02, 0);
 scene.add(path);
 
+// OBJETOS
 function box(x,y,z,sx,sy,sz,color) {
   const mesh = new THREE.Mesh(
     new THREE.BoxGeometry(sx,sy,sz),
@@ -143,9 +147,10 @@ function tree(x,z) {
  [-7,15],[7,16],[-16,5],[16,4]
 ].forEach(p => tree(p[0],p[1]));
 
-// CONSTRUÇÕES
+// CASAS
 function house(x,z,color) {
   box(x,1,z,4,2,4,color);
+
   const roof = new THREE.Mesh(
     new THREE.ConeGeometry(3.1,2,4),
     new THREE.MeshStandardMaterial({color:0x713c2c})
@@ -154,66 +159,34 @@ function house(x,z,color) {
   roof.rotation.y = Math.PI/4;
   roof.castShadow = true;
   scene.add(roof);
+
   box(x,0.9,z+2.02,0.9,1.8,0.08,0x49301e);
 }
+
 house(-7,-5,0xd7c18c);
 house(8,7,0xc5b28a);
 house(7,-10,0xb9c4a0);
 
 // PEDRAS
-for(let i=0;i<12;i++){
+for(let i=0;i<12;i++) {
   const rock = new THREE.Mesh(
     new THREE.DodecahedronGeometry(0.5+Math.random()*0.5),
     new THREE.MeshStandardMaterial({color:0x777b70})
   );
   rock.position.set(
-    (Math.random()-0.5)*35,0.35,
+    (Math.random()-0.5)*35,
+    0.35,
     (Math.random()-0.5)*35
   );
   rock.castShadow = true;
   scene.add(rock);
 }
 
-// PERSONAGEM
-const player = new THREE.Group();
-scene.add(player);
-
-const body = new THREE.Mesh(
-  new THREE.CylinderGeometry(0.48,0.55,1.1,8),
-  new THREE.MeshStandardMaterial({color:0x344d36})
-);
-body.position.y = 0.8;
-body.castShadow = true;
-player.add(body);
-
-const head = new THREE.Mesh(
-  new THREE.SphereGeometry(0.34,12,10),
-  new THREE.MeshStandardMaterial({color:0xd6a477})
-);
-head.position.y = 1.55;
-head.castShadow = true;
-player.add(head);
-
-const helmet = new THREE.Mesh(
-  new THREE.SphereGeometry(0.37,12,8,0,Math.PI*2,0,Math.PI/2),
-  new THREE.MeshStandardMaterial({color:0x354b2c})
-);
-helmet.position.y = 1.72;
-player.add(helmet);
-
-const gun = new THREE.Mesh(
-  new THREE.BoxGeometry(0.18,0.18,0.9),
-  new THREE.MeshStandardMaterial({color:0x292929})
-);
-gun.position.set(0.38,1.05,-0.55);
-player.add(gun);
-
-
 // PERSONAGEM 3D CARTOON
 const player = new THREE.Group();
 scene.add(player);
 
-function part(geometry, color, x, y, z) {
+function part(geometry,color,x,y,z) {
   const mesh = new THREE.Mesh(
     geometry,
     new THREE.MeshStandardMaterial({color})
@@ -230,7 +203,7 @@ const uniform = 0x405b39;
 const dark = 0x26372a;
 const skin = 0xd6a477;
 const vestColor = 0x596b43;
-const bootColor = 0x292b25;
+const boots = 0x292b25;
 
 // PERNAS
 part(new THREE.CylinderGeometry(0.16,0.17,0.65,10),
@@ -238,7 +211,7 @@ part(new THREE.CylinderGeometry(0.16,0.17,0.65,10),
 part(new THREE.CylinderGeometry(0.16,0.17,0.65,10),
   uniform,0.22,0.48,0);
 
-// JOELHOS
+// JOELHEIRAS
 part(new THREE.SphereGeometry(0.17,10,8),
   vestColor,-0.22,0.25,0);
 part(new THREE.SphereGeometry(0.17,10,8),
@@ -246,9 +219,9 @@ part(new THREE.SphereGeometry(0.17,10,8),
 
 // BOTAS
 part(new THREE.BoxGeometry(0.32,0.2,0.42),
-  bootColor,-0.22,0.1,-0.08);
+  boots,-0.22,0.12,-0.08);
 part(new THREE.BoxGeometry(0.32,0.2,0.42),
-  bootColor,0.22,0.1,-0.08);
+  boots,0.22,0.12,-0.08);
 
 // CORPO
 part(new THREE.BoxGeometry(0.76,0.82,0.42),
@@ -258,12 +231,12 @@ part(new THREE.BoxGeometry(0.76,0.82,0.42),
 part(new THREE.BoxGeometry(0.83,0.58,0.48),
   vestColor,0,1.15,-0.025);
 
-// DETALHES DO COLETE
-part(new THREE.BoxGeometry(0.2,0.25,0.04),
+// BOLSOS
+part(new THREE.BoxGeometry(0.2,0.25,0.06),
   dark,-0.23,1.13,-0.27);
-part(new THREE.BoxGeometry(0.2,0.25,0.04),
+part(new THREE.BoxGeometry(0.2,0.25,0.06),
   dark,0.23,1.13,-0.27);
-part(new THREE.BoxGeometry(0.12,0.4,0.04),
+part(new THREE.BoxGeometry(0.12,0.4,0.06),
   dark,0,1.12,-0.28);
 
 // MOCHILA
@@ -275,10 +248,11 @@ part(new THREE.SphereGeometry(0.34,16,12),
   skin,0,1.85,0);
 
 // CAPACETE
-part(new THREE.SphereGeometry(0.39,16,10,0,Math.PI*2,0,Math.PI/2),
-  0x40552e,0,2.04,0);
+part(new THREE.SphereGeometry(
+  0.39,16,10,0,Math.PI*2,0,Math.PI/2
+),0x40552e,0,2.04,0);
 
-// ABA DO CAPACETE
+// ABA
 part(new THREE.CylinderGeometry(0.4,0.4,0.09,16),
   0x344629,0,1.99,0);
 
@@ -309,80 +283,111 @@ part(new THREE.BoxGeometry(0.19,0.2,0.25),
 part(new THREE.BoxGeometry(0.1,0.32,0.12),
   0x292929,0.28,0.83,-0.25);
 
-// POSIÇÃO INICIAL
+// POSIÇÃO DO JOGADOR
 player.position.set(0,0,0);
-  
 
 // JOYSTICK
 const pad = document.getElementById('pad');
 const stick = document.getElementById('stick');
-let moveX = 0, moveZ = 0, pointer = null;
 
-pad.addEventListener('pointerdown', e => {
+let moveX = 0;
+let moveZ = 0;
+let pointer = null;
+
+pad.addEventListener('pointerdown',e => {
   pointer = e.pointerId;
   pad.setPointerCapture(pointer);
   updateStick(e);
 });
-pad.addEventListener('pointermove', e => {
+
+pad.addEventListener('pointermove',e => {
   if(pointer === e.pointerId) updateStick(e);
 });
+
 function updateStick(e) {
   const r = pad.getBoundingClientRect();
+
   let x = e.clientX - (r.left + r.width/2);
   let y = e.clientY - (r.top + r.height/2);
+
   const max = 36;
   const len = Math.hypot(x,y);
-  if(len > max) { x *= max/len; y *= max/len; }
+
+  if(len > max) {
+    x *= max/len;
+    y *= max/len;
+  }
+
   stick.style.transform = `translate(${x}px,${y}px)`;
   moveX = x/max;
   moveZ = y/max;
 }
+
 function resetStick() {
   pointer = null;
   moveX = 0;
   moveZ = 0;
   stick.style.transform = 'translate(0px,0px)';
 }
-pad.addEventListener('pointerup', resetStick);
-pad.addEventListener('pointercancel', resetStick);
 
-// TECLADO PARA TESTAR
+pad.addEventListener('pointerup',resetStick);
+pad.addEventListener('pointercancel',resetStick);
+
+// TECLADO
 const keys = {};
-addEventListener('keydown',e => keys[e.key.toLowerCase()] = true);
-addEventListener('keyup',e => keys[e.key.toLowerCase()] = false);
 
+addEventListener('keydown',e => {
+  keys[e.key.toLowerCase()] = true;
+});
+
+addEventListener('keyup',e => {
+  keys[e.key.toLowerCase()] = false;
+});
+
+// MOVIMENTO E CÂMERA
 function animate() {
   requestAnimationFrame(animate);
 
   let x = moveX;
   let z = moveZ;
+
   if(keys['w'] || keys['arrowup']) z = -1;
   if(keys['s'] || keys['arrowdown']) z = 1;
   if(keys['a'] || keys['arrowleft']) x = -1;
   if(keys['d'] || keys['arrowright']) x = 1;
 
   const length = Math.hypot(x,z);
+
   if(length > 0.1) {
     x /= Math.max(1,length);
     z /= Math.max(1,length);
+
     player.position.x += x*0.09;
     player.position.z += z*0.09;
+
     player.rotation.y = Math.atan2(-x,-z);
   }
 
-  camera.position.x += (player.position.x-camera.position.x)*0.06;
-  camera.position.z += (player.position.z+15-camera.position.z)*0.06;
+  camera.position.x +=
+    (player.position.x-camera.position.x)*0.06;
+
+  camera.position.z +=
+    (player.position.z+15-camera.position.z)*0.06;
+
   camera.lookAt(player.position.x,0,player.position.z);
 
   renderer.render(scene,camera);
 }
+
 animate();
 
-addEventListener('resize', () => {
+// REDIMENSIONAR
+addEventListener('resize',() => {
   camera.aspect = innerWidth/innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth,innerHeight);
 });
+
 </script>
 </body>
 </html>
