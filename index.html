@@ -3,358 +3,401 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Mini Royale</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>MINI ROYALE</title>
 <style>
-* { box-sizing: border-box; }
-body { margin:0; overflow:hidden; background:#18251d; font-family:Arial,sans-serif; touch-action:none; }
-canvas { display:block; }
-#title { position:fixed; top:12px; left:50%; transform:translateX(-50%); color:white; font-weight:bold; font-size:22px; text-shadow:2px 2px 4px black; z-index:2; }
-#pad { position:fixed; bottom:25px; left:25px; width:120px; height:120px; border-radius:50%; background:#ffffff40; border:2px solid #ffffff80; z-index:3; touch-action:none; }
-#stick { position:absolute; width:48px; height:48px; left:34px; top:34px; border-radius:50%; background:#eeeeeecc; border:2px solid white; }
-#hint { position:fixed; bottom:12px; right:15px; color:white; font-size:12px; text-shadow:1px 1px 3px black; }
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden;background:#183044;font-family:Arial;touch-action:none}
+canvas{display:block}
+#hud{position:fixed;top:12px;left:12px;color:white;text-shadow:1px 2px 4px black;z-index:5}
+#logo{font-size:20px;font-weight:bold;letter-spacing:2px}
+#region{font-size:12px;margin-top:5px}
+#pad{position:fixed;bottom:25px;left:25px;width:120px;height:120px;border:2px solid #ffffff77;border-radius:50%;background:#ffffff22;z-index:5;touch-action:none}
+#stick{position:absolute;width:46px;height:46px;left:35px;top:35px;border-radius:50%;background:#e4f4ffcc;border:2px solid white}
+#day{position:fixed;right:12px;top:12px;padding:10px;border:1px solid #ffffff88;border-radius:9px;background:#183044;color:white;z-index:5}
 </style>
 </head>
 <body>
-<div id="title">MINI ROYALE</div>
+<div id="hud"><div id="logo">MINI ROYALE</div><div id="region">Campos centrais</div></div>
+<button id="day">☀️ Dia / 🌙 Noite</button>
 <div id="pad"><div id="stick"></div></div>
-<div id="hint">Arraste o joystick para andar</div>
-<script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
-// CENA
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x9bc9dc);
-const camera = new THREE.PerspectiveCamera(48, innerWidth/innerHeight, 0.1, 200);
-camera.position.set(0,15,15);
-const renderer = new THREE.WebGLRenderer({antialias:true});
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x8bc9e8);
+scene.fog=new THREE.Fog(0x8bc9e8,110,220);
+
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,400);
+const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled=true;
 document.body.appendChild(renderer.domElement);
 
-// LUZES
-scene.add(new THREE.HemisphereLight(0xffffff,0x536344,2));
-const sun = new THREE.DirectionalLight(0xffffff,2);
-sun.position.set(8,15,8);
-sun.castShadow = true;
+const hemi=new THREE.HemisphereLight(0xffffff,0x526044,2);
+scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff0d8,2);
+sun.position.set(-40,70,35);
+sun.castShadow=true;
+sun.shadow.mapSize.set(1024,1024);
 scene.add(sun);
 
-// CHAO
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(50,50),
-  new THREE.MeshStandardMaterial({color:0x559447})
-);
-ground.rotation.x=-Math.PI/2;
-ground.receiveShadow=true;
-scene.add(ground);
+function material(c,e=0){
+ return new THREE.MeshStandardMaterial({color:c,roughness:.85,emissive:e,emissiveIntensity:1});
+}
+const M={
+ ocean:material(0x247fae),sand:material(0xd8c18e),
+ grass:material(0x56894b),forest:material(0x365d3b),
+ purple:material(0x773ca1),trunk:material(0x392b36),
+ road:material(0x555b60),line:material(0xe8d8a3),
+ concrete:material(0x858b8d),wood:material(0x79543a),
+ crystal:material(0x9d5cff,0x6722bb),
+ bush:material(0x315c32),neon:material(0x54ff72,0x27d94d)
+};
 
-const path = new THREE.Mesh(
-  new THREE.PlaneGeometry(8,50),
-  new THREE.MeshStandardMaterial({color:0xb5a078})
-);
-path.rotation.x=-Math.PI/2;
-path.position.set(0,0.02,0);
-scene.add(path);
-
-// OBJETOS DO MAPA
-function box(x,y,z,sx,sy,sz,color) {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(sx,sy,sz),
-    new THREE.MeshStandardMaterial({color})
-  );
-  mesh.position.set(x,y,z);
-  mesh.castShadow=true;
-  mesh.receiveShadow=true;
-  scene.add(mesh);
-  return mesh;
+function box(x,y,z,w,h,d,mat,parent=scene){
+ const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+ o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;
+ parent.add(o);return o;
+}
+function ground(x,z,w,d,color,y=.02){
+ const o=new THREE.Mesh(new THREE.PlaneGeometry(w,d),material(color));
+ o.rotation.x=-Math.PI/2;o.position.set(x,y,z);scene.add(o);return o;
 }
 
-function tree(x,z) {
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.18,0.25,1.4,7),
-    new THREE.MeshStandardMaterial({color:0x70452a})
-  );
-  trunk.position.set(x,0.7,z);
-  trunk.castShadow=true;
-  scene.add(trunk);
+// OCEANO
+const sea=new THREE.Mesh(new THREE.PlaneGeometry(400,400),M.ocean);
+sea.rotation.x=-Math.PI/2;sea.position.y=-.7;scene.add(sea);
 
-  const leaves = new THREE.Mesh(
-    new THREE.ConeGeometry(1.15,2.5,7),
-    new THREE.MeshStandardMaterial({color:0x236b35})
-  );
-  leaves.position.set(x,2.35,z);
-  leaves.castShadow=true;
-  scene.add(leaves);
+// ILHA COM COSTA IRREGULAR
+function island(radius,scale){
+ const s=new THREE.Shape();
+ for(let i=0;i<=120;i++){
+  const a=i/120*Math.PI*2;
+  const r=radius*(1+.045*Math.sin(a*5)+.025*Math.sin(a*9));
+  const x=Math.cos(a)*r*scale,z=Math.sin(a)*r*scale;
+  if(i===0)s.moveTo(x,z);else s.lineTo(x,z);
+ }
+ return s;
+}
+const beach=new THREE.Mesh(new THREE.ShapeGeometry(island(91,1.08),100),M.sand);
+beach.rotation.x=-Math.PI/2;beach.position.y=-.2;scene.add(beach);
+const land=new THREE.Mesh(new THREE.ShapeGeometry(island(91,.96),100),M.grass);
+land.rotation.x=-Math.PI/2;land.position.y=-.08;scene.add(land);
+
+// REGIÕES
+ground(-51,-38,62,66,0x477345);
+ground(-38,39,52,45,0x668d52);
+ground(39,35,52,48,0x777c75);
+ground(49,-39,48,45,0x77735e);
+ground(0,0,52,48,0x65914f);
+
+// ESTRADAS
+function road(x1,z1,x2,z2,w=4){
+ const dx=x2-x1,dz=z2-z1,len=Math.hypot(dx,dz);
+ const angle=Math.atan2(dx,dz);
+ const r=box((x1+x2)/2,.08,(z1+z2)/2,w,.08,len,M.road);
+ r.rotation.y=angle;
+ const stripe=box((x1+x2)/2,.13,(z1+z2)/2,.12,.04,len*.8,M.line);
+ stripe.rotation.y=angle;
+}
+road(-52,-38,-30,5);
+road(-30,5,-38,39);
+road(-30,5,8,27,5);
+road(8,27,39,35,5);
+road(8,27,49,-39,5);
+road(8,27,0,-35);
+road(0,-35,-25,-65);
+road(39,35,65,48,3);
+
+// ÁRVORES E FOLHAGEM TRANSPARENTE
+const leaves=[];
+function tree(x,z,purple=false,scale=1){
+ const g=new THREE.Group();scene.add(g);
+ box(0,1.2,0,.55,2.4,.55,purple?M.trunk:M.wood,g);
+ const crown=new THREE.Mesh(
+  new THREE.SphereGeometry(1.5,9,7),
+  (purple?M.purple:M.forest).clone()
+ );
+ crown.position.y=3;crown.scale.set(1,1.1,1);
+ crown.castShadow=true;g.add(crown);
+ g.position.set(x,0,z);g.scale.setScalar(scale);
+ leaves.push(crown);
+}
+for(let i=0;i<35;i++){
+ const x=-79+Math.random()*49,z=-77+Math.random()*68;
+ if(Math.hypot(x+51,z+40)<12)continue;
+ tree(x,z,true,.8+Math.random()*.4);
+}
+for(let i=0;i<45;i++){
+ const x=-87+Math.random()*174,z=-87+Math.random()*174;
+ if(Math.hypot(x,z)>85)continue;
+ if(x<-27&&z<5)continue;
+ if(x>20&&z>10)continue;
+ if(x>28&&z<-15)continue;
+ tree(x,z,false,.7+Math.random()*.5);
 }
 
-[[-10,-9],[-13,-3],[-10,7],[-13,13],[10,-10],[13,-4],[11,6],[14,13],[-7,15],[7,16],[-16,5],[16,4]].forEach(p=>tree(p[0],p[1]));
-
-function house(x,z,color) {
-  box(x,1,z,4,2,4,color);
-  const roof = new THREE.Mesh(
-    new THREE.ConeGeometry(3.1,2,4),
-    new THREE.MeshStandardMaterial({color:0x713c2c})
-  );
-  roof.position.set(x,3,z);
-  roof.rotation.y=Math.PI/4;
-  roof.castShadow=true;
-  scene.add(roof);
-  box(x,0.9,z+2.02,0.9,1.8,0.08,0x49301e);
+// CRISTAIS DA FLORESTA
+for(let i=0;i<24;i++){
+ const o=new THREE.Mesh(new THREE.OctahedronGeometry(.7+Math.random()*.6),M.crystal);
+ o.position.set(-78+Math.random()*48,.7,-75+Math.random()*65);
+ o.rotation.y=Math.random()*3;scene.add(o);
 }
 
-house(-7,-5,0xd7c18c);
-house(8,7,0xc5b28a);
-house(7,-10,0xb9c4a0);
+// CASAS RESIDENCIAIS
+function house(x,z,color){
+ const g=new THREE.Group();scene.add(g);g.position.set(x,0,z);
+ box(0,1.5,0,5,3,5,material(color),g);
+ const roof=new THREE.Mesh(new THREE.ConeGeometry(4,2.1,4),material(0x59483d));
+ roof.position.y=4;roof.rotation.y=Math.PI/4;g.add(roof);
+ box(0,.9,2.55,1.1,1.8,.12,M.wood,g);
+ for(const s of [-1,1])box(s*1.5,2,2.56,.9,.8,.1,material(0x76b7d0),g);
+}
+house(-40,39,0xd9c6a4);
+house(-28,47,0xb9c9c0);
+house(-48,53,0xc8b9a2);
+house(-22,32,0xd8d0b8);
 
-for(let i=0;i<12;i++) {
-  const rock = new THREE.Mesh(
-    new THREE.DodecahedronGeometry(0.5+Math.random()*0.5),
-    new THREE.MeshStandardMaterial({color:0x777b70})
-  );
-  rock.position.set(
-    (Math.random()-0.5)*35,
-    0.35,
-    (Math.random()-0.5)*35
-  );
-  rock.castShadow=true;
-  scene.add(rock);
+// PRÉDIOS URBANOS
+function building(x,z,w,h,d,color){
+ const g=new THREE.Group();scene.add(g);g.position.set(x,0,z);
+ box(0,h/2,0,w,h,d,material(color),g);
+ box(0,h+.15,0,w+.3,.3,d+.3,M.concrete,g);
+ for(let y=2;y<h-1;y+=2.5){
+  for(let xx=-w/2+1;xx<w/2;xx+=2){
+   box(xx,y,d/2+.04,.9,1.1,.08,material(0x5c9bb0),g);
+  }
+ }
+}
+building(29,28,9,12,9,0x9ba8ad);
+building(43,34,8,17,8,0x667c89);
+building(56,27,9,10,10,0xb5a99a);
+building(31,47,7,8,7,0xc4c6bd);
+building(49,49,10,13,8,0x87949a);
+
+// GALPÕES INDUSTRIAIS
+function warehouse(x,z){
+ const g=new THREE.Group();scene.add(g);g.position.set(x,0,z);
+ box(0,3,0,12,6,9,material(0x777d7d),g);
+ box(0,6.2,0,12.5,.5,9.5,material(0x454d51),g);
+ box(0,2.2,4.56,4,4,.15,material(0x343b3d),g);
+ box(-4,1.5,-5,2,3,2,M.wood,g);
+ box(4,1.5,-5,2,3,2,M.wood,g);
+}
+warehouse(44,-35);warehouse(62,-45);
+
+// MUROS DE COBERTURA
+function wall(x,z,l,a=0){
+ const m=box(x,.7,z,l,1.4,.65,M.concrete);
+ m.rotation.y=a;
+}
+wall(-63,-38,9,.3);wall(-37,-63,10,1.1);
+wall(-19,-17,8,.5);wall(13,-9,9,-.4);
+wall(25,-48,11,.2);wall(65,2,9,1.2);
+wall(-57,52,8,.7);
+
+// MOITAS VISUAIS
+for(let i=0;i<22;i++){
+ const o=new THREE.Mesh(new THREE.SphereGeometry(1,8,6),M.bush);
+ o.position.set(-75+Math.random()*145,.65,-75+Math.random()*145);
+ o.scale.set(1.3,.8,1.2);scene.add(o);
 }
 
-// PERSONAGEM FUTURISTA 3D CARTOON
-const player = new THREE.Group();
-scene.add(player);
-
-function part(geometry,color,x,y,z,parent=player,emissive=0x000000) {
-  const material = new THREE.MeshStandardMaterial({
-    color,
-    emissive,
-    emissiveIntensity:emissive?0.8:0,
-    metalness:emissive?0.25:0.05,
-    roughness:0.65
-  });
-  const mesh = new THREE.Mesh(geometry,material);
-  mesh.position.set(x,y,z);
-  mesh.castShadow=true;
-  mesh.receiveShadow=true;
-  parent.add(mesh);
-  return mesh;
+// POSTES DE ILUMINAÇÃO
+const lamps=[];
+function lamp(x,z){
+ const g=new THREE.Group();scene.add(g);g.position.set(x,0,z);
+ const pole=new THREE.Mesh(new THREE.CylinderGeometry(.09,.13,4,7),M.concrete);
+ pole.position.y=2;g.add(pole);
+ box(.65,3.85,0,1.4,.12,.12,M.concrete,g);
+ const bulb=new THREE.Mesh(new THREE.SphereGeometry(.25,8,8),material(0xffd16a));
+ bulb.material.emissive.setHex(0x000000);
+ bulb.position.set(1.25,3.7,0);g.add(bulb);
+ const light=new THREE.PointLight(0xffd38a,0,12);
+ light.position.set(1.25,3.4,0);g.add(light);
+ lamps.push({bulb,light});
 }
+for(let z=20;z<55;z+=12){lamp(17,z);lamp(62,z);}
+for(let z=-48;z<-20;z+=13)lamp(30,z);
+for(let x=-67;x<-25;x+=14)lamp(x,-20);
 
-const armor = 0x263a32;
-const armorLight = 0x40584a;
-const black = 0x151d1b;
-const neon = 0x54ff72;
-const metal = 0x899b91;
-
-// TRONCO E ARMADURA CENTRAL
-part(new THREE.BoxGeometry(0.76,0.82,0.42),armor,0,1.22,0);
-part(new THREE.BoxGeometry(0.66,0.55,0.12),armorLight,0,1.27,-0.245);
-part(new THREE.BoxGeometry(0.48,0.34,0.045),black,0,1.31,-0.32);
-
-// LINHAS LUMINOSAS DO PEITO
-part(new THREE.BoxGeometry(0.045,0.38,0.025),neon,-0.25,1.30,-0.35,player,neon);
-part(new THREE.BoxGeometry(0.045,0.38,0.025),neon,0.25,1.30,-0.35,player,neon);
-part(new THREE.BoxGeometry(0.22,0.07,0.035),metal,0,1.56,-0.33);
-
-// GOLA E MODULO NAS COSTAS
-part(new THREE.CylinderGeometry(0.16,0.18,0.17,10),black,0,1.68,0);
-part(new THREE.BoxGeometry(0.42,0.48,0.16),black,0,1.25,0.27);
-part(new THREE.BoxGeometry(0.24,0.08,0.035),neon,0,1.35,0.36,player,neon);
-part(new THREE.BoxGeometry(0.12,0.12,0.04),metal,0,1.12,0.36);
-
-// PLACAS DOS OMBROS
-for(const side of [-1,1]) {
-  const shoulder = part(
-    new THREE.SphereGeometry(0.25,12,9),
-    armorLight,side*0.43,1.49,0
-  );
-  shoulder.scale.set(1.12,0.78,1.12);
-  part(
-    new THREE.BoxGeometry(0.22,0.055,0.24),
-    neon,side*0.43,1.52,-0.13,player,neon
-  );
+// CAIXAS DE SAQUE VISUAIS
+function crate(x,z,color){
+ const g=new THREE.Group();scene.add(g);g.position.set(x,0,z);
+ box(0,.65,0,1.5,1.3,1.5,material(color),g);
+ box(0,1.34,0,1.6,.16,1.6,M.wood,g);
 }
+crate(-57,-45,0x7951a3);
+crate(-32,-54,0x9b773d);
+crate(20,-18,0x9b773d);
+crate(57,-54,0x596d7d);
+crate(50,15,0x9b773d);
+crate(-48,30,0x596d7d);
 
-// CINTO E PEQUENOS EQUIPAMENTOS
-part(new THREE.BoxGeometry(0.8,0.13,0.47),black,0,0.88,0);
-part(new THREE.BoxGeometry(0.17,0.12,0.04),metal,0,0.88,-0.25);
-
-for(const side of [-1,1]) {
-  part(new THREE.BoxGeometry(0.18,0.22,0.18),armorLight,side*0.43,0.88,0);
-  part(new THREE.BoxGeometry(0.08,0.035,0.025),neon,side*0.43,0.90,-0.10,player,neon);
+// PERSONAGEM FUTURISTA
+const player=new THREE.Group();scene.add(player);
+function part(geo,color,x,y,z,parent=player,emissive=0){
+ const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({
+  color,emissive,emissiveIntensity:emissive?.8:0,
+  metalness:.05,roughness:.65
+ }));
+ m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;
 }
-
-// PERNAS COM JOELHEIRAS TECNOLOGICAS
-const legL = new THREE.Group();
-legL.position.set(-0.22,0.8,0);
-player.add(legL);
-
-const legR = new THREE.Group();
-legR.position.set(0.22,0.8,0);
-player.add(legR);
-
-for(const leg of [legL,legR]) {
-  part(new THREE.CylinderGeometry(0.16,0.17,0.65,10),armor,0,-0.32,0,leg);
-  part(new THREE.BoxGeometry(0.22,0.24,0.12),armorLight,0.12,-0.30,-0.02,leg);
-  part(new THREE.BoxGeometry(0.29,0.19,0.14),black,0,-0.49,-0.13,leg);
-  part(new THREE.BoxGeometry(0.20,0.055,0.035),neon,0,-0.49,-0.21,leg,neon);
-  part(new THREE.CylinderGeometry(0.14,0.15,0.25,10),armorLight,0,-0.57,0,leg);
-  part(new THREE.BoxGeometry(0.33,0.21,0.44),black,0,-0.68,-0.08,leg);
-  part(new THREE.BoxGeometry(0.34,0.055,0.45),armorLight,0,-0.78,-0.08,leg);
-  part(new THREE.BoxGeometry(0.10,0.07,0.025),neon,0,-0.66,-0.31,leg,neon);
+const legs=[],arms=[];
+part(new THREE.BoxGeometry(1.05,1.25,.58),0x263a32,0,1.65,0);
+part(new THREE.BoxGeometry(.72,.22,.12),0x54ff72,0,1.9,.32);
+part(new THREE.BoxGeometry(.25,.55,.12),0x151d1b,0,1.5,.34);
+part(new THREE.BoxGeometry(.55,.22,.5),0x151d1b,0,2.35,0);
+part(new THREE.BoxGeometry(.4,.35,.4),0x40584a,0,2.65,0);
+part(new THREE.BoxGeometry(.28,.13,.48),0x54ff72,0,2.25,-.32);
+for(const s of [-1,1]){
+ part(new THREE.SphereGeometry(.34,10,8),0x40584a,s*.72,2.1,0);
+ part(new THREE.BoxGeometry(.3,.12,.35),0x54ff72,s*.72,2.1,.05);
+ const a=new THREE.Group();a.position.set(s*.76,1.85,0);player.add(a);
+ part(new THREE.BoxGeometry(.32,.78,.36),0x263a32,0,-.38,0,a);
+ part(new THREE.BoxGeometry(.34,.22,.38),0x151d1b,0,-.72,0,a);
+ arms.push(a);
+ const l=new THREE.Group();l.position.set(s*.29,1.05,0);player.add(l);
+ part(new THREE.BoxGeometry(.38,.85,.43),0x151d1b,0,-.35,0,l);
+ part(new THREE.BoxGeometry(.4,.22,.46),0x40584a,0,-.68,.02,l);
+ part(new THREE.BoxGeometry(.43,.2,.65),0x151d1b,0,-.82,.1,l);
+ legs.push(l);
 }
-
-// CABECA E CAPACETE COM VISOR
-part(new THREE.SphereGeometry(0.31,16,12),0x303b36,0,1.86,0);
-part(new THREE.CylinderGeometry(0.12,0.13,0.18,10),black,0,1.66,0);
-part(new THREE.SphereGeometry(0.39,16,10,0,Math.PI*2,0,Math.PI/2),armor,0,2.05,0);
-part(new THREE.CylinderGeometry(0.4,0.4,0.09,16),black,0,1.99,0);
-
-// VISOR NA FRENTE DO CAPACETE
-part(new THREE.BoxGeometry(0.48,0.16,0.055),black,0,1.91,-0.285);
-part(new THREE.BoxGeometry(0.39,0.055,0.025),neon,0,1.92,-0.32,player,neon);
-part(new THREE.BoxGeometry(0.13,0.08,0.08),metal,0,2.18,-0.19);
-
-for(const side of [-1,1]) {
-  part(new THREE.CylinderGeometry(0.09,0.09,0.07,10),metal,side*0.37,2.00,0);
-  part(new THREE.BoxGeometry(0.07,0.035,0.035),neon,side*0.40,2.00,-0.04,player,neon);
-}
-
-// BRACOS EM POSICAO DE SEGURAR O RIFLE
-const armL = new THREE.Group();
-armL.position.set(-0.40,1.48,0);
-armL.rotation.x=Math.PI/2;
-player.add(armL);
-
-const armR = new THREE.Group();
-armR.position.set(0.40,1.48,0);
-armR.rotation.x=Math.PI/2;
-player.add(armR);
-
-for(const arm of [armL,armR]) {
-  part(new THREE.CylinderGeometry(0.13,0.15,0.62,10),armorLight,0,-0.27,0,arm);
-  part(new THREE.CylinderGeometry(0.14,0.14,0.12,10),black,0,-0.53,0,arm);
-  part(new THREE.SphereGeometry(0.14,10,8),black,0,-0.62,-0.08,arm);
-  part(new THREE.BoxGeometry(0.16,0.06,0.12),neon,0,-0.55,-0.09,arm,neon);
-}
-
-// RIFLE FUTURISTA: OBJETO FICTICIO DO JOGO
-part(new THREE.BoxGeometry(0.18,0.17,0.78),black,0.08,1.20,-0.63);
-part(new THREE.BoxGeometry(0.24,0.22,0.28),armorLight,0.08,1.21,-0.39);
-part(new THREE.BoxGeometry(0.10,0.10,0.43),metal,0.08,1.23,-1.18);
-part(new THREE.BoxGeometry(0.12,0.08,0.16),neon,0.08,1.31,-0.82,player,neon);
-part(new THREE.BoxGeometry(0.12,0.27,0.14),black,0.08,1.00,-0.42);
-part(new THREE.BoxGeometry(0.11,0.12,0.18),armor,0.08,1.06,-0.70);
+part(new THREE.SphereGeometry(.48,12,10),0x151d1b,0,2.9,0);
+part(new THREE.BoxGeometry(.72,.23,.48),0x40584a,0,2.78,.12);
+part(new THREE.BoxGeometry(.62,.2,.12),0x167b99,0,2.91,.4);
+part(new THREE.BoxGeometry(.22,.08,.08),0x54ff72,0,2.92,.48);
+part(new THREE.BoxGeometry(.62,.8,.3),0x151d1b,0,1.75,-.43);
+part(new THREE.BoxGeometry(.42,.13,.1),0x54ff72,0,1.85,-.6);
+const gun=new THREE.Group();gun.position.set(.45,1.55,.55);player.add(gun);
+part(new THREE.BoxGeometry(.22,.22,1.05),0x151d1b,0,0,.25,gun);
+part(new THREE.BoxGeometry(.28,.28,.42),0x40584a,0,.04,-.08,gun);
+part(new THREE.BoxGeometry(.09,.1,.8),0x54ff72,0,.17,.3,gun);
+part(new THREE.BoxGeometry(.14,.32,.18),0x151d1b,0,-.22,-.05,gun);
 
 player.position.set(0,0,0);
 
 // JOYSTICK
-const pad=document.getElementById('pad');
-const stick=document.getElementById('stick');
-
-let moveX=0;
-let moveZ=0;
-let pointer=null;
-
-pad.addEventListener('pointerdown',e=>{
-  pointer=e.pointerId;
-  pad.setPointerCapture(pointer);
-  updateStick(e);
-});
-
-pad.addEventListener('pointermove',e=>{
-  if(pointer===e.pointerId) updateStick(e);
-});
-
-function updateStick(e) {
-  const r=pad.getBoundingClientRect();
-  let x=e.clientX-(r.left+r.width/2);
-  let y=e.clientY-(r.top+r.height/2);
-  const max=36;
-  const len=Math.hypot(x,y);
-
-  if(len>max) {
-    x*=max/len;
-    y*=max/len;
-  }
-
-  stick.style.transform=`translate(${x}px,${y}px)`;
-  moveX=x/max;
-  moveZ=y/max;
+let moveX=0,moveZ=0,active=false;
+const pad=document.getElementById("pad");
+const stick=document.getElementById("stick");
+function joystick(e){
+ const r=pad.getBoundingClientRect();
+ let x=e.clientX-r.left-r.width/2;
+ let y=e.clientY-r.top-r.height/2;
+ const len=Math.hypot(x,y),max=39;
+ if(len>max){x=x/len*max;y=y/len*max;}
+ stick.style.left=35+x+"px";
+ stick.style.top=35+y+"px";
+ moveX=x/max;moveZ=y/max;
 }
-
-function resetStick() {
-  pointer=null;
-  moveX=0;
-  moveZ=0;
-  stick.style.transform='translate(0px,0px)';
+pad.addEventListener("pointerdown",e=>{
+ active=true;pad.setPointerCapture(e.pointerId);joystick(e);
+});
+pad.addEventListener("pointermove",e=>{if(active)joystick(e);});
+function stop(){
+ active=false;moveX=moveZ=0;
+ stick.style.left="35px";stick.style.top="35px";
 }
-
-pad.addEventListener('pointerup',resetStick);
-pad.addEventListener('pointercancel',resetStick);
+pad.addEventListener("pointerup",stop);
+pad.addEventListener("pointercancel",stop);
 
 // TECLADO
 const keys={};
+addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
-addEventListener('keydown',e=>{
-  keys[e.key.toLowerCase()]=true;
-});
+// CÂMERA
+camera.position.set(0,17,19);
+camera.lookAt(0,1,0);
 
-addEventListener('keyup',e=>{
-  keys[e.key.toLowerCase()]=false;
-});
+// DIA E NOITE
+let night=false;
+document.getElementById("day").onclick=()=>{
+ night=!night;
+ const color=night?0x111b35:0x8bc9e8;
+ scene.background.setHex(color);
+ scene.fog.color.setHex(color);
+ hemi.intensity=night?.5:2;
+ sun.intensity=night?.2:2;
+ lamps.forEach(l=>{
+  l.bulb.material.emissive.setHex(night?0xffd16a:0x000000);
+  l.light.intensity=night?1.5:0;
+ });
+};
 
-// MOVIMENTO E CAMERA
-function animate() {
-  requestAnimationFrame(animate);
+// MOVIMENTO E ATUALIZAÇÃO
+const region=document.getElementById("region");
+let walk=0;
+const clock=new THREE.Clock();
 
-  let x=moveX;
-  let z=moveZ;
+function animate(){
+ requestAnimationFrame(animate);
+ const dt=Math.min(clock.getDelta(),.04);
+ let x=moveX,z=moveZ;
+ if(keys.a||keys.arrowleft)x--;
+ if(keys.d||keys.arrowright)x++;
+ if(keys.w||keys.arrowup)z--;
+ if(keys.s||keys.arrowdown)z++;
+ const len=Math.hypot(x,z);
+ if(len>1){x/=len;z/=len;}
+ player.position.x+=x*10*dt;
+ player.position.z+=z*10*dt;
 
-  if(keys['w']||keys['arrowup']) z=-1;
-  if(keys['s']||keys['arrowdown']) z=1;
-  if(keys['a']||keys['arrowleft']) x=-1;
-  if(keys['d']||keys['arrowright']) x=1;
+ const dist=Math.hypot(player.position.x,player.position.z);
+ if(dist>82){
+  player.position.x*=82/dist;
+  player.position.z*=82/dist;
+ }
 
-  const length=Math.hypot(x,z);
-  const moving=length>0.1;
+ if(len>.08){
+  walk+=dt*10;
+  legs[0].rotation.x=Math.sin(walk)*.45;
+  legs[1].rotation.x=-Math.sin(walk)*.45;
+  arms[0].rotation.x=-Math.sin(walk)*.2;
+  arms[1].rotation.x=Math.sin(walk)*.2;
+  player.rotation.y=Math.atan2(x,z);
+ }else{
+  legs.forEach(l=>l.rotation.x*=.8);
+  arms.forEach(a=>a.rotation.x*=.8);
+ }
 
-  if(moving) {
-    x/=Math.max(1,length);
-    z/=Math.max(1,length);
+ // TRANSPARÊNCIA DAS COPAS
+ leaves.forEach(leaf=>{
+  const p=new THREE.Vector3();
+  leaf.getWorldPosition(p);
+  const d=Math.hypot(p.x-player.position.x,p.z-player.position.z);
+  const target=d<4?.18:1;
+  leaf.material.transparent=true;
+  leaf.material.opacity+=(target-leaf.material.opacity)*.12;
+  leaf.material.depthWrite=leaf.material.opacity>.8;
+ });
 
-    player.position.x+=x*0.09;
-    player.position.z+=z*0.09;
-    player.rotation.y=Math.atan2(-x,-z);
-  }
+ // CÂMERA SEGUE O JOGADOR
+ camera.position.lerp(
+  new THREE.Vector3(player.position.x,17,player.position.z+19),.08
+ );
+ camera.lookAt(player.position.x,1,player.position.z);
 
-  const time=performance.now()*0.012;
+ // IDENTIFICAÇÃO DA REGIÃO
+ const px=player.position.x,pz=player.position.z;
+ if(px<-25&&pz<5)region.textContent="Floresta Mística";
+ else if(px<-10&&pz>20)region.textContent="Bairro Residencial";
+ else if(px>18&&pz>12)region.textContent="Centro Urbano";
+ else if(px>25&&pz<-15)region.textContent="Zona Industrial";
+ else if(Math.hypot(px,pz)>70)region.textContent="Praias da Ilha";
+ else region.textContent="Campos Centrais";
 
-  if(moving) {
-    legL.rotation.x=Math.sin(time)*0.65;
-    legR.rotation.x=Math.sin(time+Math.PI)*0.65;
-    player.position.y=Math.abs(Math.sin(time*2))*0.035;
-  } else {
-    legL.rotation.x=0;
-    legR.rotation.x=0;
-    player.position.y=0;
-  }
-
-  camera.position.x+=(player.position.x-camera.position.x)*0.06;
-  camera.position.z+=(player.position.z+15-camera.position.z)*0.06;
-  camera.lookAt(player.position.x,0,player.position.z);
-
-  renderer.render(scene,camera);
+ renderer.render(scene,camera);
 }
-
 animate();
 
-// REDIMENSIONAR
-addEventListener('resize',()=>{
-  camera.aspect=innerWidth/innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth,innerHeight);
+addEventListener("resize",()=>{
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight);
 });
 </script>
 </body>
