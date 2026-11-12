@@ -283,8 +283,111 @@ part(new THREE.BoxGeometry(0.19,0.2,0.25),
 part(new THREE.BoxGeometry(0.1,0.32,0.12),
   0x292929,0.28,0.83,-0.25);
 
-// POSIÇÃO DO JOGADOR
+
+// PERSONAGEM 3D CARTOON
+const player = new THREE.Group();
+scene.add(player);
+
+function part(geometry,color,x,y,z,parent=player) {
+  const mesh = new THREE.Mesh(
+    geometry,
+    new THREE.MeshStandardMaterial({color})
+  );
+  mesh.position.set(x,y,z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
+}
+
+const uniform = 0x405b39;
+const dark = 0x26372a;
+const skin = 0xd6a477;
+const vestColor = 0x596b43;
+const boots = 0x292b25;
+
+// PERNAS ARTICULADAS
+const legL = new THREE.Group();
+legL.position.set(-0.22,0.8,0);
+player.add(legL);
+
+const legR = new THREE.Group();
+legR.position.set(0.22,0.8,0);
+player.add(legR);
+
+for (const leg of [legL,legR]) {
+  part(new THREE.CylinderGeometry(0.16,0.17,0.65,10),
+    uniform,0,-0.32,0,leg);
+
+  part(new THREE.SphereGeometry(0.17,10,8),
+    vestColor,0,-0.55,0,leg);
+
+  part(new THREE.BoxGeometry(0.32,0.2,0.42),
+    boots,0,-0.68,-0.08,leg);
+}
+
+// CORPO
+part(new THREE.BoxGeometry(0.76,0.82,0.42),
+  uniform,0,1.12,0);
+
+part(new THREE.BoxGeometry(0.83,0.58,0.48),
+  vestColor,0,1.15,-0.025);
+
+// BOLSOS
+part(new THREE.BoxGeometry(0.2,0.25,0.06),
+  dark,-0.23,1.13,-0.27);
+
+part(new THREE.BoxGeometry(0.2,0.25,0.06),
+  dark,0.23,1.13,-0.27);
+
+part(new THREE.BoxGeometry(0.12,0.4,0.06),
+  dark,0,1.12,-0.28);
+
+// MOCHILA
+part(new THREE.BoxGeometry(0.58,0.65,0.25),
+  dark,0,1.2,0.32);
+
+// CABEÇA
+part(new THREE.SphereGeometry(0.34,16,12),
+  skin,0,1.85,0);
+
+// CAPACETE
+part(new THREE.SphereGeometry(
+  0.39,16,10,0,Math.PI*2,0,Math.PI/2
+),0x40552e,0,2.04,0);
+
+part(new THREE.CylinderGeometry(0.4,0.4,0.09,16),
+  0x344629,0,1.99,0);
+
+// BRAÇOS ARTICULADOS
+const armL = new THREE.Group();
+armL.position.set(-0.42,1.48,0);
+player.add(armL);
+
+const armR = new THREE.Group();
+armR.position.set(0.42,1.48,0);
+player.add(armR);
+
+for (const arm of [armL,armR]) {
+  part(new THREE.CylinderGeometry(0.13,0.15,0.65,10),
+    uniform,0,-0.28,0,arm);
+
+  part(new THREE.SphereGeometry(0.14,10,8),
+    dark,0,-0.62,-0.08,arm);
+}
+
+// RIFLE
+part(new THREE.BoxGeometry(0.14,0.14,0.85),
+  0x292929,0.28,1.05,-0.48);
+
+part(new THREE.BoxGeometry(0.19,0.2,0.25),
+  0x414141,0.28,1.05,-0.2);
+
+part(new THREE.BoxGeometry(0.1,0.32,0.12),
+  0x292929,0.28,0.83,-0.25);
+
 player.position.set(0,0,0);
+  
 
 // JOYSTICK
 const pad = document.getElementById('pad');
