@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Mini Royale</title>
+<style>
+*{box-sizing:border-box;touch-action:none}
+body{margin:0;overflow:hidden;background:#79b95a;font-family:Arial}
+canvas{display:block;width:100vw;height:100dvh}
+#info{position:absolute;top:10px;left:10px;color:white;font-weight:bold;background:#183522;padding:12px;border-radius:12px}
+#joy{position:absolute;bottom:25px;left:25px;width:115px;height:115px;border-radius:50%;background:#ffffff66;border:2px solid white}
+#knob{position:absolute;left:34px;top:34px;width:44px;height:44px;border-radius:50%;background:white}
+#fire{position:absolute;bottom:45px;right:25px;border:0;border-radius:50%;width:85px;height:85px;background:#e84939;color:white;font-weight:bold}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">❤️ <span id="hp">100</span> | ELIMINAÇÕES: <span id="kills">0</span></div>
+<div id="joy"><div id="knob"></div></div>
+<button id="fire">ATIRAR</button>
+<script>
+const c=document.getElementById("c"),g=c.getContext("2d");
+let w,h,p,bots,k=0,move={x:0,y:0},shoot=false;
+function size(){w=c.width=innerWidth;h=c.height=innerHeight}
+onresize=size;size();
+function reset(){
+p={x:w/2,y:h/2,hp:100};
+bots=Array.from({length:7},()=>({x:40+Math.random()*(w-80),y:80+Math.random()*(h-130),hp:40}));
+k=0;document.getElementById("hp").textContent=100;
+document.getElementById("kills").textContent=0;
+}
+reset();
+function draw(){
+g.fillStyle="#79b95a";g.fillRect(0,0,w,h);
+g.strokeStyle="#6aa64e";
+for(let x=0;x<w;x+=40)for(let y=0;y<h;y+=40)g.strokeRect(x,y,40,40);
+for(let b of bots)if(b.hp>0){
+let dx=p.x-b.x,dy=p.y-b.y,d=Math.hypot(dx,dy)||1;
+if(d>30){b.x+=dx/d*.5;b.y+=dy/d*.5}
+g.fillStyle="#e5a34b";g.beginPath();g.arc(b.x,b.y,14,0,7);g.fill();
+}
+g.fillStyle="#278ee0";g.beginPath();g.arc(p.x,p.y,16,0,7);g.fill();
+}
+function loop(){
+p.x=Math.max(15,Math.min(w-15,p.x+move.x*3));
+p.y=Math.max(15,Math.min(h-15,p.y+move.y*3));
+if(shoot){
+let b=bots.filter(b=>b.hp>0).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
+if(b){b.hp-=1;if(b.hp<=0){k++;document.getElementById("kills").textContent=k}}
+shoot=false;
+}
+for(let b of bots)if(b.hp>0&&Math.hypot(b.x-p.x,b.y-p.y)<27){
+p.hp-=.1;document.getElementById("hp").textContent=Math.max(0,Math.floor(p.hp));
+}
+draw();requestAnimationFrame(loop);
+}
+loop();
+let joy=document.getElementById("joy"),knob=document.getElementById("knob"),active=false;
+function steer(e){
+let r=joy.getBoundingClientRect(),x=e.clientX-r.left-57.5,y=e.clientY-r.top-57.5,d=Math.hypot(x,y),m=Math.min(35,d);
+move={x:d?x/d*m/35:0,y:d?y/d*m/35:0};
+knob.style.transform=`translate(${move.x*35}px,${move.y*35}px)`;
+}
+joy.onpointerdown=e=>{active=true;joy.setPointerCapture(e.pointerId);steer(e)};
+joy.onpointermove=e=>{if(active)steer(e)};
+joy.onpointerup=joy.onpointercancel=()=>{active=false;move={x:0,y:0};knob.style.transform=""};
+document.getElementById("fire").onpointerdown=()=>shoot=true;
+</script>
+</body>
+</html>
