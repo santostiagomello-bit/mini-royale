@@ -345,66 +345,6 @@ addEventListener('keyup',e => {
   keys[e.key.toLowerCase()] = false;
 });
 
-// MOVIMENTO E CÂMERA
-function animate() {
-  requestAnimationFrame(animate);
-
-  let x = moveX;
-  let z = moveZ;
-
-  if(keys['w'] || keys['arrowup']) z = -1;
-  if(keys['s'] || keys['arrowdown']) z = 1;
-  if(keys['a'] || keys['arrowleft']) x = -1;
-  if(keys['d'] || keys['arrowright']) x = 1;
-
-  const length = Math.hypot(x,z);
-
-  if(length > 0.1) {
-    x /= Math.max(1,length);
-    z /= Math.max(1,length);
-
-    player.position.x += x*0.09;
-    player.position.z += z*0.09;
-
-    player.rotation.y = Math.atan2(-x,-z);
-  }
-
-  camera.position.x +=
-    (player.position.x-camera.position.x)*0.06;
-
-  camera.position.z +=
-    (player.position.z+15-camera.position.z)*0.06;
-
-  camera.lookAt(player.position.x,0,player.position.z);
-
-  renderer.render(scene,camera);
-}
-
-
-function animate() {
-  requestAnimationFrame(animate);
-
-  let x = moveX;
-  let z = moveZ;
-
-  if(keys['w'] || keys['arrowup']) z = -1;
-  if(keys['s'] || keys['arrowdown']) z = 1;
-  if(keys['a'] || keys['arrowleft']) x = -1;
-  if(keys['d'] || keys['arrowright']) x = 1;
-
-  const length = Math.hypot(x,z);
-  const moving = length > 0.1;
-
-  if(moving) {
-    x /= Math.max(1,length);
-    z /= Math.max(1,length);
-
-    player.position.x += x*0.09;
-    player.position.z += z*0.09;
-
-    player.rotation.y = Math.atan2(-x,-z);
-  }
-
 // REDIMENSIONAR
 
 // MOVIMENTO E CÂMERA
