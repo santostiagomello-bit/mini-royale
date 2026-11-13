@@ -39,6 +39,7 @@ canvas{display:block}
 select{background:#243c35;color:white;border:1px solid #ffffff55;border-radius:6px;padding:4px}
 #toast{position:absolute;top:43%;left:50%;transform:translate(-50%,-50%);font-weight:900;font-size:15px;background:#14251ddd;padding:9px 14px;border-radius:10px;opacity:0;transition:opacity .2s}
 #toast.show{opacity:1}
+#errorBox{display:none;position:fixed;z-index:20;inset:12px;background:#251d1d;color:white;padding:20px;border:2px solid #ff7777;border-radius:12px;overflow:auto;white-space:pre-wrap}
 @media(max-width:500px){
  #top{top:6px;left:6px;right:6px}
  .panel{padding:6px 8px}
@@ -52,7 +53,10 @@ select{background:#243c35;color:white;border:1px solid #ffffff55;border-radius:6
 </style>
 </head>
 <body>
+
 <div id="game"></div>
+<div id="errorBox"></div>
+
 <div id="hud">
  <div id="top">
   <div class="panel">
@@ -82,7 +86,7 @@ select{background:#243c35;color:white;border:1px solid #ffffff55;border-radius:6
 
  <div id="centerMsg">UMA PEQUENA IDEIA, UM GRANDE MUNDO</div>
  <button id="start">INICIAR PARTIDA</button>
- <div id="hint">Explore a ilha, encontre equipamentos e enfrente os bots.</div>
+ <div id="hint">Prepare-se para entrar na Ilha Royale!</div>
  <div id="toast"></div>
 
  <div id="bottom">
@@ -104,28 +108,90 @@ select{background:#243c35;color:white;border:1px solid #ffffff55;border-radius:6
 
 const $=id=>document.getElementById(id);
 const mount=$('game');
+
+function showError(message){
+ const box=$('errorBox');
+ box.style.display='block';
+ box.textContent='NÃO FOI POSSÍVEL INICIAR O MINI ROYALE\n\n'+message+
+ '\n\nVerifique sua conexão com a internet e tente abrir novamente.';
+}
+
+if(typeof THREE==='undefined'){
+ showError('A biblioteca 3D não carregou. Confira sua conexão.');
+ return;
+}
+
 let quality='medium';
+let scene,camera,renderer;
+let running=false;
+let last=performance.now();
+let gameTime=0;
+let phase='menu';
+let health=100;
+let kills=0;
+let zoneRadius=53;
+let zoneTimer=60;
+let fireCooldown=0;
+let jumpVelocity=0;
+let jumping=false;
+let firing=false;
+let toastTimer=0;
+let playerHeight=24;
+let stick={x:0,y:0};
+let bots=[];
+let loot=[];
+let bullets=[];
+let trees=[];
+let obstacles=[];
+let grassMesh=null;
+let weaponIndex=0;
 
-const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x91cbdc);
-scene.fog=new THREE.Fog(0x91cbdc,100,230);
+const weapons=[
+ {name:'PISTOLA',ammo:24,damage:25,range:32,cooldown:.42},
+ {name:'RIFLE',ammo:60,damage:16,range:48,cooldown:.16},
+ {name:'FACA',ammo:Infinity,damage:38,range:3.4,cooldown:.55}
+];
 
-const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,500);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
-renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.3));
-renderer.shadowMap.enabled=true;
-renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-renderer.outputColorSpace=THREE.SRGBColorSpace;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.1;
-mount.appendChild(renderer.domElement);
+function material(color,roughness=.9){
+ return new THREE.MeshStandardMaterial({color,roughness});
+}
+
+try{
+ scene=new THREE.Scene();
+ scene.background=new THREE.Color(0x91cbdc);
+ scene.fog=new THREE.Fog(0x91cbdc,100,230);
+
+ camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,500);
+
+ renderer=new THREE.WebGLRenderer({
+  antialias:true,
+  powerPreference:'high-performance'
+ });
+
+ renderer.setSize(innerWidth,innerHeight);
+ renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.3));
+ renderer.shadowMap.enabled=true;
+ renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+ renderer.outputColorSpace=THREE.SRGBColorSpace;
+ renderer.toneMapping=THREE.ACESFilmicToneMapping;
+ renderer.toneMappingExposure=1.1;
+ mount.appendChild(renderer.domElement);
+
+}catch(error){
+ showError('Erro ao criar a tela 3D: '+error.message);
+ return;
+}
+
+window.addEventListener('error',e=>{
+ showError(e.message||'Erro inesperado no jogo.');
+});
 
 scene.add(new THREE.HemisphereLight(0xe8f8ff,0x536b42,1.7));
- let quality = 'medium';
+
 const fillLight=new THREE.DirectionalLight(0xc4e4ff,.6);
 fillLight.position.set(35,25,-35);
 scene.add(fillLight);
+
 const sun=new THREE.DirectionalLight(0xffe4b5,2.2);
 sun.position.set(-35,65,25);
 sun.castShadow=true;
@@ -136,30 +202,20 @@ sun.shadow.camera.top=95;
 sun.shadow.camera.bottom=-95;
 scene.add(sun);
 
-const mat=(c,r=.9)=>new THREE.MeshStandardMaterial({color:c,roughness:r});
-const grassMat=mat(0x67ad50),sandMat=mat(0xe8d39b);
-const roadMat=mat(0x777b78),white=mat(0xf1eadb);
-const roof1=mat(0xd8754d),roof2=mat(0x4b8f9b);
-const wood=mat(0x9b6842),leaf=mat(0x39854a);
-const leaf2=mat(0x65a94c),trunk=mat(0x795236);
-const rockMat=mat(0x858d82);
+const grassMat=material(0x67ad50);
+const sandMat=material(0xe8d39b);
+const roadMat=material(0x777b78);
+const white=material(0xf1eadb);
+const roof1=material(0xd8754d);
+const roof2=material(0x4b8f9b);
+const wood=material(0x9b6842);
+const leaf=material(0x39854a);
+const leaf2=material(0x65a94c);
+const trunk=material(0x795236);
+const rockMat=material(0x858d82);
 
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(180,180),grassMat);
-ground.rotation.x=-Math.PI/2;
-ground.receiveShadow=true;
-scene.add(ground);
-
-const islandEdge=new THREE.Mesh(new THREE.CylinderGeometry(88,92,5,64),sandMat);
-islandEdge.position.y=-2.8;
-scene.add(islandEdge);
-
-const ocean=new THREE.Mesh(new THREE.PlaneGeometry(500,500),mat(0x3c9bb6,.35));
-ocean.rotation.x=-Math.PI/2;
-ocean.position.y=-3.2;
-scene.add(ocean);
-
-function box(parent,x,y,z,sx,sy,sz,m){
- const o=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),m);
+function addBox(parent,x,y,z,sx,sy,sz,mat){
+ const o=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat);
  o.position.set(x,y,z);
  o.castShadow=true;
  o.receiveShadow=true;
@@ -167,47 +223,85 @@ function box(parent,x,y,z,sx,sy,sz,m){
  return o;
 }
 
-const obstacles=[];
 function addObstacle(x,z,sx,sz){
  obstacles.push({x,z,sx,sz});
 }
+
+const ground=new THREE.Mesh(
+ new THREE.PlaneGeometry(180,180),
+ grassMat
+);
+ground.rotation.x=-Math.PI/2;
+ground.receiveShadow=true;
+scene.add(ground);
+
+const islandEdge=new THREE.Mesh(
+ new THREE.CylinderGeometry(88,92,5,64),
+ sandMat
+);
+islandEdge.position.y=-2.8;
+scene.add(islandEdge);
+
+const ocean=new THREE.Mesh(
+ new THREE.PlaneGeometry(500,500),
+ material(0x3c9bb6,.35)
+);
+ocean.rotation.x=-Math.PI/2;
+ocean.position.y=-3.2;
+scene.add(ocean);
 
 function makeHouse(x,z,roof=roof1,s=1){
  const g=new THREE.Group();
  g.position.set(x,0,z);
  scene.add(g);
- box(g,0,1.25,0,7*s,2.5*s,6*s,white);
- box(g,0,2.85*s,0,7.8*s,.65*s,6.8*s,roof);
- box(g,0,.75*s,3.04*s,1.2*s,1.5*s,.12*s,wood);
+
+ addBox(g,0,1.25,0,7*s,2.5*s,6*s,white);
+ addBox(g,0,2.85*s,0,7.8*s,.65*s,6.8*s,roof);
+ addBox(g,0,.75*s,3.04*s,1.2*s,1.5*s,.12*s,wood);
+
  for(let i=-1;i<=1;i+=2){
-  box(g,i*2*s,1.55*s,3.08*s,1.1*s,.8*s,.13*s,mat(0x8ac8d4));
+  addBox(g,i*2*s,1.55*s,3.08*s,1.1*s,.8*s,.13*s,material(0x8ac8d4));
  }
+
  addObstacle(x,z,7*s,6*s);
 }
 
-function tree(x,z,s=1){
+function makeTree(x,z,s=1){
  const g=new THREE.Group();
  g.position.set(x,0,z);
  g.scale.setScalar(s);
  scene.add(g);
- const t=new THREE.Mesh(new THREE.CylinderGeometry(.35,.5,3,7),trunk);
+
+ const t=new THREE.Mesh(
+  new THREE.CylinderGeometry(.35,.5,3,7),trunk
+ );
  t.position.y=1.5;
  t.castShadow=true;
  g.add(t);
- const a=new THREE.Mesh(new THREE.IcosahedronGeometry(2.1,1),leaf);
+
+ const a=new THREE.Mesh(
+  new THREE.IcosahedronGeometry(2.1,1),leaf
+ );
  a.position.y=3.4;
  a.castShadow=true;
  g.add(a);
- const b=new THREE.Mesh(new THREE.IcosahedronGeometry(1.45,1),leaf2);
+
+ const b=new THREE.Mesh(
+  new THREE.IcosahedronGeometry(1.45,1),leaf2
+ );
  b.position.set(.8,3.1,.3);
  b.castShadow=true;
  g.add(b);
+
  g.userData.tree=true;
+ trees.push(g);
  return g;
 }
 
-function rock(x,z,s=1){
- const o=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),rockMat);
+function makeRock(x,z,s=1){
+ const o=new THREE.Mesh(
+  new THREE.DodecahedronGeometry(s,0),rockMat
+ );
  o.position.set(x,s*.55,z);
  o.scale.set(1,.7,1.2);
  o.castShadow=true;
@@ -215,110 +309,143 @@ function rock(x,z,s=1){
  addObstacle(x,z,s*1.5,s*1.5);
 }
 
-box(scene,0,.035,0,12,.08,150,roadMat);
-box(scene,0,.04,-20,130,.08,8,roadMat);
-box(scene,-35,.045,22,65,.08,7,roadMat);
+function buildMap(){
+ addBox(scene,0,.035,0,12,.08,150,roadMat);
+ addBox(scene,0,.04,-20,130,.08,8,roadMat);
+ addBox(scene,-35,.045,22,65,.08,7,roadMat);
 
-for(let i=0;i<10;i++){
- makeHouse(-47+(i%5)*12,-42+Math.floor(i/5)*13,i%2?roof1:roof2,.8);
-}
-for(let i=0;i<6;i++){
- makeHouse(25+(i%3)*13,-38+Math.floor(i/3)*14,i%2?roof2:roof1,1);
+ for(let i=0;i<10;i++){
+  makeHouse(
+   -47+(i%5)*12,
+   -42+Math.floor(i/5)*13,
+   i%2?roof1:roof2,
+   .8
+  );
+ }
+
+ for(let i=0;i<6;i++){
+  makeHouse(
+   25+(i%3)*13,
+   -38+Math.floor(i/3)*14,
+   i%2?roof2:roof1,
+   1
+  );
+ }
+
+ for(let i=0;i<3;i++){
+  const x=28+i*16;
+  addBox(scene,x,2,25,13,4,11,material(0xc5c5b6));
+  addBox(scene,x,4.2,25,13,.7,11,roof2);
+  addBox(scene,x,1.2,30.6,3,2.4,.2,material(0x555e62));
+  addObstacle(x,25,13,11);
+ }
+
+ for(let i=0;i<4;i++){
+  const x=-50+(i%2)*13;
+  const z=27+Math.floor(i/2)*14;
+  addBox(scene,x,3,z,9,6,9,white);
+  addBox(scene,x,6.3,z,9,.8,9,roof1);
+  addObstacle(x,z,9,9);
+ }
+
+ for(let i=0;i<52;i++){
+  const x=(Math.random()-.5)*145;
+  const z=(Math.random()-.5)*145;
+  if(Math.abs(x)<18||Math.abs(z)<12)continue;
+  makeTree(x,z,.65+Math.random()*.45);
+ }
+
+ for(let i=0;i<30;i++){
+  const x=(Math.random()-.5)*140;
+  const z=(Math.random()-.5)*140;
+  if(Math.abs(x)<15&&Math.abs(z)<15)continue;
+  makeRock(x,z,.4+Math.random()*.65);
+ }
+
+ for(let i=0;i<28;i++){
+  const patch=new THREE.Mesh(
+   new THREE.CircleGeometry(2.5+Math.random()*5,18),
+   material(i%2?0x78b45a:0x5d9e4b)
+  );
+  patch.rotation.x=-Math.PI/2;
+  patch.position.set(
+   (Math.random()-.5)*155,
+   .012,
+   (Math.random()-.5)*155
+  );
+  patch.scale.set(1,.65,1);
+  scene.add(patch);
+ }
 }
 
-for(let i=0;i<3;i++){
- const x=28+i*16;
- box(scene,x,2,25,13,4,11,mat(0xc5c5b6));
- box(scene,x,4.2,25,13,.7,11,roof2);
- box(scene,x,1.2,30.6,3,2.4,.2,mat(0x555e62));
- addObstacle(x,25,13,11);
-}
-
-for(let i=0;i<4;i++){
- const x=-50+(i%2)*13;
- const z=27+Math.floor(i/2)*14;
- box(scene,x,3,z,9,6,9,white);
- box(scene,x,6.3,z,9,.8,9,roof1);
- addObstacle(x,z,9,9);
-}
-
-const trees=[];
-for(let i=0;i<52;i++){
- const x=(Math.random()-.5)*145;
- const z=(Math.random()-.5)*145;
- if(Math.abs(x)<18||Math.abs(z)<12)continue;
- trees.push(tree(x,z,.65+Math.random()*.45));
-}
-for(let i=0;i<30;i++){
- const x=(Math.random()-.5)*140;
- const z=(Math.random()-.5)*140;
- if(Math.abs(x)<15&&Math.abs(z)<15)continue;
- rock(x,z,.4+Math.random()*.65);
-}
-
-for(let i=0;i<28;i++){
- const patch=new THREE.Mesh(
-  new THREE.CircleGeometry(2.5+Math.random()*5,18),
-  mat(i%2?0x78b45a:0x5d9e4b)
- );
- patch.rotation.x=-Math.PI/2;
- patch.position.set((Math.random()-.5)*155,.012,(Math.random()-.5)*155);
- patch.scale.set(1,.65,1);
- scene.add(patch);
-}
-
-let grassMesh=null;
 function createGrass(count){
  if(grassMesh){
   scene.remove(grassMesh);
   grassMesh.geometry.dispose();
+  grassMesh.material.dispose();
  }
+
  const geo=new THREE.ConeGeometry(.11,.65,3);
  geo.translate(0,.32,0);
- grassMesh=new THREE.InstancedMesh(geo,mat(0x4c9145),count);
+
+ grassMesh=new THREE.InstancedMesh(
+  geo,
+  material(0x4c9145),
+  count
+ );
+
  const dummy=new THREE.Object3D();
+
  for(let i=0;i<count;i++){
   let x=(Math.random()-.5)*168;
   let z=(Math.random()-.5)*168;
+
   if(Math.abs(x)<8&&Math.abs(z)<8)x+=18;
+
   dummy.position.set(x,.02,z);
   dummy.rotation.y=Math.random()*Math.PI;
+
   const s=.55+Math.random()*.8;
   dummy.scale.set(s,s,s);
   dummy.updateMatrix();
   grassMesh.setMatrixAt(i,dummy.matrix);
  }
+
  scene.add(grassMesh);
 }
+
+buildMap();
 createGrass(2200);
 
-// Personagem do jogador
+// Jogador
 const player=new THREE.Group();
 scene.add(player);
-const bodyMat=mat(0x253c45);
-const armorMat=mat(0x344f59);
-const visorMat=mat(0x1b4e60,.25);
+
+const bodyMat=material(0x253c45);
+const armorMat=material(0x344f59);
+const visorMat=material(0x1b4e60,.25);
 const neonMat=new THREE.MeshStandardMaterial({
- color:0x9dff4d,emissive:0x347d13,emissiveIntensity:.7
+ color:0x9dff4d,
+ emissive:0x347d13,
+ emissiveIntensity:.7
 });
 
-box(player,0,1.35,0,1.05,1.25,.62,armorMat);
-box(player,0,2.35,0,.95,.9,.88,bodyMat);
-box(player,0,2.42,.46,.72,.35,.08,visorMat);
-const armL=box(player,-.56,1.45,0,.28,.85,.35,bodyMat);
-const armR=box(player,.56,1.45,0,.28,.85,.35,bodyMat);
-const legL=box(player,-.28,.45,0,.34,.85,.4,bodyMat);
-const legR=box(player,.28,.45,0,.34,.85,.4,bodyMat);
-box(player,0,1.5,-.42,.75,.7,.22,neonMat);
-const gun=box(player,.72,1.35,.35,.95,.18,.22,mat(0x252c31));
-gun.rotation.y=-.2;
+addBox(player,0,1.35,0,1.05,1.25,.62,armorMat);
+addBox(player,0,2.35,0,.95,.9,.88,bodyMat);
+addBox(player,0,2.42,.46,.72,.35,.08,visorMat);
+addBox(player,-.56,1.45,0,.28,.85,.35,bodyMat);
+addBox(player,.56,1.45,0,.28,.85,.35,bodyMat);
+addBox(player,-.28,.45,0,.34,.85,.4,bodyMat);
+addBox(player,.28,.45,0,.34,.85,.4,bodyMat);
+addBox(player,0,1.5,-.42,.75,.7,.22,neonMat);
+addBox(player,.72,1.35,.35,.95,.18,.22,material(0x252c31));
 
 // Avião
 const plane=new THREE.Group();
 scene.add(plane);
-box(plane,0,0,0,2.1,.8,9,mat(0xe8e9e4));
-box(plane,0,-.05,0,13,.22,2.1,mat(0x4e8292));
-box(plane,0,.35,-3.6,4,.18,1.5,mat(0x4e8292));
+addBox(plane,0,0,0,2.1,.8,9,material(0xe8e9e4));
+addBox(plane,0,-.05,0,13,.22,2.1,material(0x4e8292));
+addBox(plane,0,.35,-3.6,4,.18,1.5,material(0x4e8292));
 plane.rotation.y=Math.PI/2;
 plane.position.set(-65,24,-5);
 plane.visible=false;
@@ -328,16 +455,21 @@ const chute=new THREE.Group();
 player.add(chute);
 chute.position.set(0,5.5,0);
 chute.visible=false;
+
 const canopy=new THREE.Mesh(
  new THREE.SphereGeometry(2.5,16,10,0,Math.PI*2,0,Math.PI/2),
- mat(0xe84f4f)
+ material(0xe84f4f)
 );
 canopy.scale.set(1.25,.7,.8);
 canopy.position.y=1.4;
 chute.add(canopy);
+
 for(const side of [-1,1]){
  for(const front of [-1,1]){
-  const line=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,2.3,5),white);
+  const line=new THREE.Mesh(
+   new THREE.CylinderGeometry(.025,.025,2.3,5),
+   white
+  );
   line.position.set(side*1.55,.15,front*.8);
   line.rotation.z=side*.55;
   chute.add(line);
@@ -353,30 +485,97 @@ safeRing.rotation.x=Math.PI/2;
 safeRing.position.y=.2;
 scene.add(safeRing);
 
-// Armas
-const weapons=[
- {name:'PISTOLA',ammo:24,damage:25,range:32,cooldown:.42},
- {name:'RIFLE',ammo:60,damage:16,range:48,cooldown:.16},
- {name:'FACA',ammo:Infinity,damage:38,range:3.4,cooldown:.55}
-];
-let weaponIndex=0;
-let fireCooldown=0;
-let health=100;
-let kills=0;
-let phase='menu';
-let zoneRadius=53;
-let zoneTimer=60;
-let playerHeight=24;
-let jumpVelocity=0;
-let jumping=false;
-let animClock=0;
-let last=performance.now();
-let stick={x:0,y:0};
-let bots=[];
-let loot=[];
-let bullets=[];
-let toastTimer=0;
-let gameTime=0;
+// Entidades
+function createBot(x,z){
+ const g=new THREE.Group();
+ const bm=material(0x9b3939);
+ const dark=material(0x452b2b);
+
+ addBox(g,0,1.25,0,.9,1.15,.65,bm);
+ addBox(g,0,2.15,0,.85,.8,.8,dark);
+ addBox(g,0,2.18,.42,.6,.25,.08,material(0xe9c35a));
+ addBox(g,-.52,1.35,0,.25,.75,.3,bm);
+ addBox(g,.52,1.35,0,.25,.75,.3,bm);
+ addBox(g,-.25,.42,0,.3,.8,.35,dark);
+ addBox(g,.25,.42,0,.3,.8,.35,dark);
+
+ g.position.set(x,0,z);
+ scene.add(g);
+
+ return {
+  group:g,
+  x,z,
+  health:100,
+  alive:true,
+  cooldown:Math.random(),
+  speed:1.6+Math.random()*.55
+ };
+}
+
+function createLoot(x,z,type){
+ const colors={
+  med:0x35d46a,
+  ammo:0xe6bd35,
+  rifle:0x4aa7dc,
+  armor:0x9a73d6
+ };
+
+ const g=new THREE.Group();
+
+ const base=new THREE.Mesh(
+  new THREE.BoxGeometry(.9,.7,.9),
+  material(colors[type]||0xe6bd35)
+ );
+ base.position.y=.55;
+ base.castShadow=true;
+ g.add(base);
+
+ addBox(g,0,1.05,0,.65,.12,.12,white);
+
+ if(type==='med'){
+  addBox(g,0,1.05,0,.12,.12,.65,white);
+ }
+
+ g.position.set(x,0,z);
+ scene.add(g);
+
+ loot.push({group:g,type,x,z});
+}
+
+function createBullet(x,y,z,target,team,damage){
+ const mesh=new THREE.Mesh(
+  new THREE.SphereGeometry(.14,8,8),
+  new THREE.MeshBasicMaterial({
+   color:team==='player'?0xffe66b:0xff795e
+  })
+ );
+
+ mesh.position.set(x,y,z);
+ scene.add(mesh);
+
+ const dx=target.x-x;
+ const dz=target.z-z;
+ const length=Math.max(.01,Math.hypot(dx,dz));
+
+ bullets.push({
+  mesh,
+  vx:dx/length*32,
+  vz:dz/length*32,
+  life:1.5,
+  team,
+  damage
+ });
+}
+
+function clearEntities(){
+ for(const b of bots)scene.remove(b.group);
+ for(const l of loot)scene.remove(l.group);
+ for(const b of bullets)scene.remove(b.mesh);
+
+ bots=[];
+ loot=[];
+ bullets=[];
+}
 
 function say(message){
  $('toast').textContent=message;
@@ -388,102 +587,99 @@ function updateHUD(){
  $('healthLabel').textContent='VIDA: '+Math.ceil(health)+'/100';
  $('healthFill').style.width=Math.max(0,health)+'%';
  $('weaponName').textContent=weapons[weaponIndex].name;
+
  const w=weapons[weaponIndex];
- $('ammo').textContent=w.ammo===Infinity?'Munição: ilimitada':'Munição: '+w.ammo;
- $('stats').textContent='Bots: '+bots.filter(b=>b.alive).length+' • Eliminações: '+kills;
+ $('ammo').textContent=w.ammo===Infinity?
+  'Munição: ilimitada':'Munição: '+w.ammo;
+
+ $('stats').textContent=
+  'Bots: '+bots.filter(b=>b.alive).length+
+  ' • Eliminações: '+kills;
 }
 
 function setPhase(p){
  phase=p;
+
  $('start').style.display=p==='menu'?'block':'none';
  $('restart').style.display=(p==='dead'||p==='won')?'block':'none';
- $('centerMsg').textContent=
-  p==='menu'?'UMA PEQUENA IDEIA, UM GRANDE MUNDO':
-  p==='plane'?'ESCOLHA ONDE POUSAR':
-  p==='fall'?'QUEDA LIVRE':
-  p==='chute'?'DESCENDO DE PARAQUEDAS':
-  p==='landed'?'SOBREVIVA!':
-  p==='dead'?'VOCÊ FOI ELIMINADO':
-  p==='won'?'VITÓRIA ROYALE!':'';
- $('hint').textContent=
-  p==='menu'?'Entre na ilha e prepare-se para a batalha!':
-  p==='landed'?'Colete equipamentos, derrote os bots e fique na zona segura.':
-  p==='dead'?'Toque em RECOMEÇAR para tentar novamente.':
-  p==='won'?'Você derrotou todos os bots!':'Use o joystick para direcionar seu personagem.';
- $('jump').style.display=['plane','fall','chute','landed'].includes(p)?'block':'none';
+
+ const messages={
+  menu:'UMA PEQUENA IDEIA, UM GRANDE MUNDO',
+  plane:'PREPARE-SE PARA SALTAR',
+  fall:'QUEDA LIVRE',
+  chute:'DESCENDO DE PARAQUEDAS',
+  landed:'SOBREVIVA!',
+  dead:'VOCÊ FOI ELIMINADO',
+  won:'VITÓRIA ROYALE!'
+ };
+
+ $('centerMsg').textContent=messages[p]||'';
+
+ const hints={
+  menu:'Entre na ilha e prepare-se para a batalha!',
+  plane:'Toque em PULAR para sair do avião.',
+  fall:'Toque em PULAR para abrir o paraquedas.',
+  chute:'Você está descendo. Prepare-se para pousar.',
+  landed:'Colete equipamentos, derrote os bots e fique na zona segura.',
+  dead:'Toque em RECOMEÇAR para tentar novamente.',
+  won:'Você derrotou todos os bots!'
+ };
+
+ $('hint').textContent=hints[p]||'';
+
+ $('jump').style.display=
+  ['plane','fall','chute','landed'].includes(p)?'block':'none';
+
  $('shoot').style.display=p==='landed'?'block':'none';
  $('switch').style.display=p==='landed'?'block':'none';
  $('collect').style.display=p==='landed'?'block':'none';
 }
 
-function createBot(x,z){
- const g=new THREE.Group();
- const bm=mat(0x9b3939);
- const dark=mat(0x452b2b);
- box(g,0,1.25,0,.9,1.15,.65,bm);
- box(g,0,2.15,0,.85,.8,.8,dark);
- box(g,0,2.18,.42,.6,.25,.08,mat(0xe9c35a));
- box(g,-.52,1.35,0,.25,.75,.3,bm);
- box(g,.52,1.35,0,.25,.75,.3,bm);
- box(g,-.25,.42,0,.3,.8,.35,dark);
- box(g,.25,.42,0,.3,.8,.35,dark);
- g.position.set(x,0,z);
- scene.add(g);
- return {group:g,x,z,health:100,alive:true,cooldown:Math.random(),speed:1.6+Math.random()*.55};
-}
-
-function createLoot(x,z,type){
- const colors={med:0x35d46a,ammo:0xe6bd35,rifle:0x4aa7dc,armor:0x9a73d6};
- const g=new THREE.Group();
- const base=new THREE.Mesh(
-  new THREE.BoxGeometry(.9,.7,.9),
-  mat(colors[type]||0xe6bd35)
- );
- base.position.y=.55;
- base.castShadow=true;
- g.add(base);
- const cross=box(g,0,1.05,0,.65,.12,.12,white);
- if(type==='med')box(g,0,1.05,0,.12,.12,.65,white);
- g.position.set(x,0,z);
- scene.add(g);
- loot.push({group:g,type,x,z});
-}
-
-function clearEntities(){
- for(const b of bots)scene.remove(b.group);
- for(const l of loot)scene.remove(l.group);
- for(const b of bullets)scene.remove(b.mesh);
- bots=[];loot=[];bullets=[];
-}
-
 function startGame(){
  clearEntities();
- health=100;kills=0;
- zoneRadius=53;zoneTimer=60;
+
+ health=100;
+ kills=0;
+ zoneRadius=53;
+ zoneTimer=60;
  weaponIndex=0;
- weapons[0].ammo=24;weapons[1].ammo=60;
+ weapons[0].ammo=24;
+ weapons[1].ammo=60;
  fireCooldown=0;
- player.position.set(0,24,0);
- player.rotation.set(0,0,0);
+ gameTime=0;
  playerHeight=24;
  jumping=false;
  jumpVelocity=0;
+ firing=false;
+
+ player.position.set(0,24,0);
+ player.rotation.set(0,0,0);
+ player.visible=false;
+
  chute.visible=false;
  plane.visible=true;
  plane.position.set(-65,24,-5);
- gameTime=0;
+
  for(let i=0;i<9;i++){
   let x=(Math.random()-.5)*125;
   let z=(Math.random()-.5)*125;
-  if(Math.hypot(x,z)<18){x+=25;}
+
+  if(Math.hypot(x,z)<18)x+=25;
+
   bots.push(createBot(x,z));
  }
- const types=['med','ammo','ammo','rifle','med','ammo','armor','ammo','med','rifle','ammo','med'];
- for(let i=0;i<types.length;i++){
-  let x=(Math.random()-.5)*135;
-  let z=(Math.random()-.5)*135;
-  createLoot(x,z,types[i]);
+
+ const types=[
+  'med','ammo','ammo','rifle','med','ammo',
+  'armor','ammo','med','rifle','ammo','med'
+ ];
+
+ for(const type of types){
+  const x=(Math.random()-.5)*135;
+  const z=(Math.random()-.5)*135;
+  createLoot(x,z,type);
  }
+
  setPhase('plane');
  updateHUD();
 }
@@ -491,13 +687,14 @@ function startGame(){
 function jump(){
  if(phase==='plane'){
   player.position.set(plane.position.x,24,plane.position.z);
+  player.visible=true;
   plane.visible=false;
   setPhase('fall');
+
  }else if(phase==='fall'){
   chute.visible=true;
   setPhase('chute');
- }else if(phase==='chute'){
-  // Mantém o paraquedas aberto durante a descida.
+
  }else if(phase==='landed'&&!jumping){
   jumping=true;
   jumpVelocity=12;
@@ -510,144 +707,112 @@ function land(){
  chute.visible=false;
  plane.visible=false;
  setPhase('landed');
- say('Pouso realizado!');
+ say('POUSO REALIZADO!');
 }
 
 function nearObstacle(x,z){
  for(const o of obstacles){
-  if(Math.abs(x-o.x)<o.sx/2+.65&&Math.abs(z-o.z)<o.sz/2+.65)return true;
+  if(
+   Math.abs(x-o.x)<o.sx/2+.65&&
+   Math.abs(z-o.z)<o.sz/2+.65
+  )return true;
  }
  return false;
 }
 
 function movePlayer(dx,dz){
- let nx=THREE.MathUtils.clamp(player.position.x+dx,-82,82);
- let nz=THREE.MathUtils.clamp(player.position.z+dz,-82,82);
- if(!nearObstacle(nx,player.position.z))player.position.x=nx;
- if(!nearObstacle(player.position.x,nz))player.position.z=nz;
+ const nx=THREE.MathUtils.clamp(player.position.x+dx,-82,82);
+ const nz=THREE.MathUtils.clamp(player.position.z+dz,-82,82);
+
+ if(!nearObstacle(nx,player.position.z)){
+  player.position.x=nx;
+ }
+
+ if(!nearObstacle(player.position.x,nz)){
+  player.position.z=nz;
+ }
 }
 
 function nearestBot(maxDistance){
- let best=null,dist=maxDistance;
+ let best=null;
+ let distance=maxDistance;
+
  for(const b of bots){
   if(!b.alive)continue;
-  const d=Math.hypot(b.x-player.position.x,b.z-player.position.z);
-  if(d<dist){dist=d;best=b;}
+
+  const d=Math.hypot(
+   b.x-player.position.x,
+   b.z-player.position.z
+  );
+
+  if(d<distance){
+   distance=d;
+   best=b;
+  }
  }
+
  return best;
 }
 
 function shoot(){
  if(phase!=='landed'||health<=0)return;
+
  const w=weapons[weaponIndex];
+
  if(w.ammo===0){
-  say('Sem munição! Procure caixas.');
+  say('SEM MUNIÇÃO! PROCURE CAIXAS.');
   return;
  }
+
  if(w.ammo!==Infinity)w.ammo--;
+
  const target=nearestBot(w.range);
+
  if(target){
   const dx=target.x-player.position.x;
   const dz=target.z-player.position.z;
+
   player.rotation.y=Math.atan2(dx,dz);
-  target.health-=w.damage;
-  target.group.position.y=.08;
-  setTimeout(()=>{if(target.alive)target.group.position.y=0},80);
-  if(target.health<=0){
-   target.alive=false;
-   scene.remove(target.group);
-   kills++;
-   say('BOT ELIMINADO!');
-   if(Math.random()<.8)createLoot(target.x,target.z,Math.random()<.5?'ammo':'med');
-  }else{
-   say('ACERTOU!');
-  }
+
+  createBullet(
+   player.position.x,
+   1.5,
+   player.position.z,
+   {x:target.x,y:1.5,z:target.z},
+   'player',
+   w.damage
+  );
+
  }else{
-  say(w.name==='FACA'?'Nenhum inimigo perto!':'Tiro disparado!');
+  say(w.name==='FACA'?'NENHUM INIMIGO PERTO!':'TIRO DISPARADO!');
  }
+
  updateHUD();
 }
 
 function switchWeapon(){
  weaponIndex=(weaponIndex+1)%weapons.length;
- say('Equipado: '+weapons[weaponIndex].name);
+ say('EQUIPADO: '+weapons[weaponIndex].name);
  updateHUD();
 }
 
 function collect(){
  if(phase!=='landed')return;
- let closest=null,dist=3.5;
+
+ let closest=null;
+ let distance=3.5;
+
  for(const l of loot){
-  const d=Math.hypot(l.x-player.position.x,l.z-player.position.z);
-  if(d<dist){dist=d;closest=l;}
+  const d=Math.hypot(
+   l.x-player.position.x,
+   l.z-player.position.z
+  );
+
+  if(d<distance){
+   distance=d;
+   closest=l;
+  }
  }
+
  if(!closest){
-  say('Nenhum item por perto!');
-  return;
- }
- if(closest.type==='med'){
-  health=Math.min(100,health+35);
-  say('Kit médico: +35 de vida');
- }else if(closest.type==='ammo'){
-  weapons[0].ammo+=12;
-  weapons[1].ammo+=25;
-  say('Munição coletada!');
- }else if(closest.type==='rifle'){
-  weaponIndex=1;
-  weapons[1].ammo+=25;
-  say('Rifle coletado!');
- }else{
-  health=Math.min(100,health+20);
-  say('Equipamento coletado!');
- }
- scene.remove(closest.group);
- loot=loot.filter(l=>l!==closest);
- updateHUD();
-}
-
-$('start').onclick=startGame;
-$('jump').onclick=jump;
-$('shoot').onclick=shoot;
-$('switch').onclick=switchWeapon;
-$('collect').onclick=collect;
-$('restart').onclick=()=>{
- player.position.set(0,0,0);
- chute.visible=false;plane.visible=false;
- health=100;
- updateHUD();
- setPhase('menu');
- $('zone').textContent='Aguardando partida';
- clearEntities();
-};
-
-$('quality').onchange=e=>{
- quality=e.target.value;
- const count=quality==='low'?700:quality==='medium'?2200:5200;
- createGrass(count);
- renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='low'?.8:quality==='medium'?1.2:1.6));
- renderer.shadowMap.enabled=quality!=='low';
- renderer.setSize(innerWidth,innerHeight);
-};
-
-// Joystick
-const area=$('stickArea');
-const knob=$('stick');
-let active=false;
-function moveStick(e){
- const r=area.getBoundingClientRect();
- let dx=e.clientX-(r.left+r.width/2);
- let dy=e.clientY-(r.top+r.height/2);
- const len=Math.hypot(dx,dy),max=34;
- if(len>max){dx=dx/len*max;dy=dy/len*max;}
- stick.x=dx/max;
- stick.y=dy/max;
- knob.style.transform=`translate(${dx}px,${dy}px)`;
-}
-area.addEventListener('pointerdown',e=>{
- active=true;
- area.setPointerCapture(e.pointerId);
- moveStick(e);
-});
-area.addEventListener('pointermove',e=>{if(active)moveStick(e)});
-function release(){
- activ
+  say('NENHUM ITE
