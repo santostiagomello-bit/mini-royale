@@ -122,6 +122,7 @@ renderer.toneMappingExposure=1.1;
 mount.appendChild(renderer.domElement);
 
 scene.add(new THREE.HemisphereLight(0xe8f8ff,0x536b42,1.7));
+ let quality = 'medium';
 const fillLight=new THREE.DirectionalLight(0xc4e4ff,.6);
 fillLight.position.set(35,25,-35);
 scene.add(fillLight);
