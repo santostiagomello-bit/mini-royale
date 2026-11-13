@@ -1,1 +1,35 @@
+# Continue from the patched source already prepared above; replace the old loot handler safely.
+start = s.index('function openLoot(item){')
+end = s.index('let toastTimer=0;', start)
+s = s[:start] + 'function openLoot(item){collectPickup(item);}\n' + s[end:]
 
+s = s.replace('spawnShot(start,end,true);\n if(weapon', 'spawnShot(start,end,true);sfx("shot");\n if(weapon')
+s = s.replace('function eliminateBot(bot){bot.alive=false;createGhost(bot.group.position.x,bot.group.position.z);createDrop(bot.group.position.x,bot.group.position.z);scene.remove(bot.group);', 'function eliminateBot(bot){bot.alive=false;createGhost(bot.group.position.x,bot.group.position.z);createEnemyCrate(bot.group.position.x,bot.group.position.z);sfx("enemy");scene.remove(bot.group);')
+s = s.replace('for(const l of loot)scene.remove(l.group);loot.length=0;', 'for(const l of loot)scene.remove(l.group);loot.length=0;for(const c of enemyCrates)scene.remove(c.group);enemyCrates.length=0;activeEnemyCrate=null;$("lootPanel").style.display="none";')
+s = s.replace('createChest(-8,4,"COMUM");createChest(9,-7,"RARO");createChest(28,8,"ÉPICO");createChest(-25,-15,"LENDÁRIO");', '''createChest(-8,4,"COMUM");createChest(9,-7,"RARO");createChest(28,8,"ÉPICO");createChest(-25,-15,"LENDÁRIO");
+ createWeaponPickup(-18,10,"BLASTER",30);createWeaponPickup(18,18,"RIFLE",36);createWeaponPickup(48,-25,"SHOTGUN",18);
+ createAmmoPickup(5,22,20);createAmmoPickup(-42,-25,18);createMedPickup(34,-18);createMedPickup(-35,35);''')
+s = s.replace('for(const item of [...loot]){item.group.rotation.y+=dt*.7;item.group.position.y=.45+Math.sin(elapsed*2+item.group.position.x)*.08;if(player.position.distanceTo(item.group.position)<2.3)openLoot(item)}', '''nearbyPickup=null;
+  for(const item of [...loot]){
+   item.group.rotation.y+=dt*.7;item.group.position.y=(item.type==="weapon"?.65:.45)+Math.sin(elapsed*2+item.group.position.x)*.08;
+   if(player.position.distanceTo(item.group.position)<2.5){
+    if(item.type==="chest"||item.type==="drop")openLoot(item);
+    else if(!nearbyPickup)nearbyPickup=item;
+   }
+  }
+  if(nearbyPickup){$("pickupButton").style.display="block";$("pickupButton").textContent=nearbyPickup.type==="weapon"?"🖐️ PEGAR "+nearbyPickup.kind:nearbyPickup.type==="med"?"🖐️ PEGAR KIT":"🖐️ PEGAR MUNIÇÃO";}
+  else $("pickupButton").style.display="none";
+  let nearestCrate=null,crateDist=3.2;
+  for(const c of enemyCrates){const d=player.position.distanceTo(c.group.position);if(d<crateDist){crateDist=d;nearestCrate=c;}}
+  if(nearestCrate){$("pickupButton").style.display="block";$("pickupButton").textContent="🎒 VER LOOT";}''')
+s = s.replace('$("fireButton").addEventListener("pointerdown"', '''$("pickupButton").addEventListener("pointerdown",e=>{e.preventDefault();let best=null,dist=3.3;for(const c of enemyCrates){const d=player.position.distanceTo(c.group.position);if(d<dist){dist=d;best=c;}}if(best){showEnemyLoot(best);return;}if(nearbyPickup)collectPickup(nearbyPickup);});
+$("lootClose").addEventListener("click",()=>{$("lootPanel").style.display="none";activeEnemyCrate=null;});
+$("fireButton").addEventListener("pointerdown"''')
+s = s.replace('gameStarted=true;health=100;', 'stopLobbyMusic();gameStarted=true;health=100;')
+s = s.replace('lobby.style.display="block";hud.style.display="none";background.style.display="block";', 'lobby.style.display="block";hud.style.display="none";background.style.display="block";startLobbyMusic();$("pickupButton").style.display="none";$("lootPanel").style.display="none";')
+s = s.replace('function startLobbyMusic(){stopLobbyMusic();if(!soundEnabled)return;', 'function startLobbyMusic(){stopLobbyMusic();if(!soundEnabled||gameStarted)return;')
+
+out = Path("/mnt/data/MINI_SKY_BATTLE_V4.html")
+out.write_text(s, encoding="utf-8")
+print(f"Arquivo criado: {out.name} ({out.stat().st_size:,} bytes)")
+  
