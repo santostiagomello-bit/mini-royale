@@ -3,10 +3,750 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>MINI ROYALE — PvP + Bots</title>
+<title>MINI ROYALE — Protótipo</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;overflow:hidden;background:#8bc7d7;font-family:Arial,sans-serif;touch-action:none;user-select:none}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8bc7d7;font-family:Arial,sans-serif;touch-action:none}
 #game{position:fixed;inset:0}
 canvas{display:block}
-#
+#hud{position:fixed;inset:0;pointer-events:none;color:#fff;text-shadow:0 2px 3px #263b35}
+.panel{background:#14251dcc;border:1px solid #ffffff40;border-radius:12px;padding:9px 12px;backdrop-filter:blur(5px)}
+#top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+#status{font-weight:800;font-size:14px}
+#zone{font-size:12px;margin-top:4px}
+#qualityBox{pointer-events:auto}
+select{background:#243c35;color:white;border:1px solid #ffffff55;border-radius:7px;padding:5px}
+#centerMsg{position:absolute;top:22%;left:50%;transform:translateX(-50%);font-weight:900;font-size:clamp(18px,4vw,28px);text-align:center;white-space:nowrap}
+#bottom{position:absolute;left:0;right:0;bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 16px;gap:12px}
+#stickArea{pointer-events:auto;width:118px;height:118px;border-radius:50%;background:#ffffff25;border:2px solid #ffffff80;position:relative;touch-action:none}
+#stick{position:absolute;width:48px;height:48px;border-radius:50%;background:#e8f5e9cc;border:2px solid #fff;left:33px;top:33px}
+#actions{display:flex;flex-direction:column;gap:9px;align-items:flex-end;pointer-events:auto}
+.action{border:2px solid #fff;color:#fff;background:#147fbaee;border-radius:13px;padding:13px 18px;font-weight:900;font-size:15px;min-width:132px;box-shadow:0 4px 0 #07527d}
+.action:active{transform:translateY(2px);box-shadow:0 2px 0 #07527d}
+#start{position:absolute;left:50%;top:53%;transform:translate(-50%,-50%);pointer-events:auto;background:#16a05b;border:2px solid white;color:white;font-size:18px;font-weight:900;padding:15px 25px;border-radius:14px;box-shadow:0 5px 0 #086438;cursor:pointer}
+#start:hover{background:#1eb969}
+#hint{position:absolute;bottom:145px;left:50%;transform:translateX(-50%);font-size:12px;text-align:center;white-space:nowrap}
+#restart{display:none;background:#c0392b;box-shadow:0 4px 0 #7a1f15}
+@media(max-width:500px){
+ #top{top:8px;left:8px;right:8px}
+ .panel{padding:7px 9px}
+ #bottom{padding:0 12px}
+ #stickArea{width:108px;height:108px}
+ #stick{left:29px;top:29px}
+}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud">
+  <div id="top">
+    <div class="panel">
+      <div id="status">MINI ROYALE • PRÉ-TEMPORADA</div>
+      <div id="zone">Zona segura: aguardando partida</div>
+    </div>
+    <div class="panel" id="qualityBox">
+      Gráficos
+      <select id="quality">
+        <option value="low">Baixo</option>
+        <option value="medium" selected>Médio</option>
+        <option value="high">Alto</option>
+      </select>
+    </div>
+  </div>
+  <div id="centerMsg">PREPARE-SE PARA SALTAR</div>
+  <button id="start">INICIAR PARTIDA</button>
+  <div id="hint">Use o controle para direcionar o personagem durante a descida.</div>
+  <div id="bottom">
+    <div id="stickArea"><div id="stick"></div></div>
+    <div id="actions">
+      <button class="action" id="jump">SALTAR DO AVIÃO</button>
+      <button class="action" id="groundJump" style="display:none;background:#269b55;box-shadow:0 4px 0 #126335">PULAR</button>
+      <button class="action" id="restart">RECOMEÇAR</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+'use strict';
+
+const mount = document.getElementById('game');
+let quality = 'medium';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x91cbdc);
+scene.fog = new THREE.Fog(0x91cbdc, 95, 220);
+
+const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 36, 43);
+
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: 'high-performance'
+});
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.35));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.12;
+mount.appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xe8f8ff, 0x536b42, 1.65));
+
+const fillLight = new THREE.DirectionalLight(0xc4e4ff, 0.55);
+fillLight.position.set(35, 25, -35);
+scene.add(fillLight);
+
+const sun = new THREE.DirectionalLight(0xffe4b5, 2.6);
+sun.position.set(-35, 65, 25);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.left = -95;
+sun.shadow.camera.right = 95;
+sun.shadow.camera.top = 95;
+sun.shadow.camera.bottom = -95;
+scene.add(sun);
+
+const mat = (c, r = 0.9) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
+const grassMat = mat(0x67ad50);
+const darkGrass = mat(0x4c9145);
+const sandMat = mat(0xe8d39b);
+const roadMat = mat(0x777b78);
+const white = mat(0xf1eadb);
+const roof1 = mat(0xd8754d);
+const roof2 = mat(0x4b8f9b);
+const wood = mat(0x9b6842);
+const leaf = mat(0x39854a);
+const leaf2 = mat(0x65a94c);
+const trunk = mat(0x795236);
+const rockMat = mat(0x858d82);
+
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(180, 180), grassMat
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const islandEdge = new THREE.Mesh(
+  new THREE.CylinderGeometry(88, 92, 5, 64), sandMat
+);
+islandEdge.position.y = -2.8;
+scene.add(islandEdge);
+
+const ocean = new THREE.Mesh(
+  new THREE.PlaneGeometry(500, 500), mat(0x3c9bb6, 0.35)
+);
+ocean.rotation.x = -Math.PI / 2;
+ocean.position.y = -3.2;
+scene.add(ocean);
+
+function box(parent, x, y, z, sx, sy, sz, m) {
+  const o = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), m);
+  o.position.set(x, y, z);
+  o.castShadow = true;
+  o.receiveShadow = true;
+  parent.add(o);
+  return o;
+}
+
+function makeHouse(x, z, roof = roof1, s = 1) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  scene.add(g);
+  box(g, 0, 1.25, 0, 7 * s, 2.5 * s, 6 * s, white);
+  const r = box(g, 0, 2.85 * s, 0, 7.8 * s, 0.65 * s, 6.8 * s, roof);
+  r.rotation.z = 0.04;
+  box(g, 0, 0.75 * s, 3.04 * s, 1.2 * s, 1.5 * s, 0.12 * s, wood);
+  for (let i = -1; i <= 1; i += 2) {
+    box(g, i * 2 * s, 1.55 * s, 3.08 * s, 1.1 * s, 0.8 * s, 0.13 * s, mat(0x8ac8d4));
+  }
+  box(g, 0, 2.15 * s, -3.12 * s, 1.5 * s, 0.5 * s, 0.12 * s, roof);
+}
+
+function tree(x, z, scale = 1) {
+  const g = new THREE.Group();
+  g.position.set(x, 0, z);
+  g.scale.setScalar(scale);
+  scene.add(g);
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 3, 7), trunk);
+  t.position.y = 1.5;
+  t.castShadow = true;
+  g.add(t);
+  const a = new THREE.Mesh(new THREE.IcosahedronGeometry(2.1, 1), leaf);
+  a.position.y = 3.4;
+  a.castShadow = true;
+  g.add(a);
+  const b = new THREE.Mesh(new THREE.IcosahedronGeometry(1.45, 1), leaf2);
+  b.position.set(0.8, 3.1, 0.3);
+  b.castShadow = true;
+  g.add(b);
+}
+
+function rock(x, z, s = 1) {
+  const o = new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), rockMat);
+  o.position.set(x, s * 0.55, z);
+  o.scale.set(1, 0.7, 1.2);
+  o.castShadow = true;
+  scene.add(o);
+}
+
+const road1 = box(scene, 0, 0.035, 0, 12, 0.08, 150, roadMat);
+const road2 = box(scene, 0, 0.04, -20, 130, 0.08, 8, roadMat);
+const road3 = box(scene, -35, 0.045, 22, 65, 0.08, 7, roadMat);
+road3.rotation.y = -0.12;
+
+for (let i = -3; i <= 3; i++) {
+  box(scene, i * 2, 0.09, 0, 0.12, 0.02, 150, mat(0x999b91));
+}
+
+for (let i = 0; i < 10; i++) {
+  makeHouse(-47 + (i % 5) * 12, -42 + Math.floor(i / 5) * 13, i % 2 ? roof1 : roof2, 0.8);
+}
+for (let i = 0; i < 6; i++) {
+  makeHouse(25 + (i % 3) * 13, -38 + Math.floor(i / 3) * 14, i % 2 ? roof2 : roof1, 1);
+}
+for (let i = 0; i < 3; i++) {
+  const x = 28 + i * 16;
+  box(scene, x, 2, 25, 13, 4, 11, mat(0xc5c5b6));
+  box(scene, x, 4.2, 25, 13, 0.7, 11, roof2);
+  box(scene, x, 1.2, 30.6, 3, 2.4, 0.2, mat(0x555e62));
+}
+for (let i = 0; i < 4; i++) {
+  const x = -50 + (i % 2) * 13;
+  const z = 27 + Math.floor(i / 2) * 14;
+  box(scene, x, 3, z, 9, 6, 9, white);
+  box(scene, x, 6.3, z, 9, 0.8, 9, roof1);
+}
+for (let i = 0; i < 48; i++) {
+  let x = (Math.random() - 0.5) * 145;
+  let z = (Math.random() - 0.5) * 145;
+  if (Math.abs(x) < 18 || Math.abs(z) < 12) continue;
+  tree(x, z, 0.65 + Math.random() * 0.45);
+}
+for (let i = 0; i < 30; i++) {
+  let x = (Math.random() - 0.5) * 140;
+  let z = (Math.random() - 0.5) * 140;
+  if (Math.abs(x) < 15 && Math.abs(z) < 15) continue;
+  rock(x, z, 0.4 + Math.random() * 0.65);
+}
+for (let i = 0; i < 34; i++) {
+  const patch = new THREE.Mesh(
+    new THREE.CircleGeometry(2.5 + Math.random() * 5, 18),
+    mat(i % 2 ? 0x78b45a : 0x5d9e4b)
+  );
+  patch.rotation.x = -Math.PI / 2;
+  patch.position.set((Math.random() - 0.5) * 155, 0.012, (Math.random() - 0.5) * 155);
+  patch.scale.set(1, 0.65, 1);
+  scene.add(patch);
+}
+
+let grassMesh = null;
+function createGrass(count) {
+  if (grassMesh) {
+    scene.remove(grassMesh);
+    grassMesh.geometry.dispose();
+    grassMesh = null;
+  }
+  const geo = new THREE.ConeGeometry(0.11, 0.65, 3);
+  geo.translate(0, 0.32, 0);
+  grassMesh = new THREE.InstancedMesh(geo, darkGrass, count);
+  const dummy = new THREE.Object3D();
+  for (let i = 0; i < count; i++) {
+    let x = (Math.random() - 0.5) * 168;
+    let z = (Math.random() - 0.5) * 168;
+    if (Math.abs(x) < 8 && Math.abs(z) < 8) x += 18;
+    dummy.position.set(x, 0.02, z);
+    dummy.rotation.y = Math.random() * Math.PI;
+    const s = 0.55 + Math.random() * 0.8;
+    dummy.scale.set(s, s, s);
+    dummy.updateMatrix();
+    grassMesh.setMatrixAt(i, dummy.matrix);
+  }
+  grassMesh.receiveShadow = true;
+  scene.add(grassMesh);
+}
+
+const player = new THREE.Group();
+scene.add(player);
+
+const bodyMat = mat(0x253c45);
+const armorMat = mat(0x344f59);
+const neonMat = new THREE.MeshStandardMaterial({
+  color: 0x9dff4d,
+  emissive: 0x347d13,
+  emissiveIntensity: 0.7
+});
+const visorMat = new THREE.MeshStandardMaterial({
+  color: 0x1b4e60,
+  metalness: 0.35,
+  roughness: 0.2
+});
+
+box(player, 0, 1.35, 0, 1.05, 1.25, 0.62, armorMat);
+box(player, 0, 2.35, 0, 0.95, 0.9, 0.88, bodyMat);
+box(player, 0, 2.42, 0.46, 0.72, 0.35, 0.08, visorMat);
+
+const armL = box(player, -0.56, 1.45, 0, 0.28, 0.85, 0.35, bodyMat);
+const armR = box(player, 0.56, 1.45, 0, 0.28, 0.85, 0.35, bodyMat);
+const legL = box(player, -0.28, 0.45, 0, 0.34, 0.85, 0.4, bodyMat);
+const legR = box(player, 0.28, 0.45, 0, 0.34, 0.85, 0.4, bodyMat);
+
+box(player, 0, 1.5, -0.42, 0.75, 0.7, 0.22, neonMat);
+const gun = box(player, 0.72, 1.35, 0.35, 0.95, 0.18, 0.22, mat(0x252c31));
+gun.rotation.y = -0.2;
+player.position.set(0, 0, 0);
+
+const plane = new THREE.Group();
+scene.add(plane);
+box(plane, 0, 0, 0, 2.1, 0.8, 9, mat(0xe8e9e4));
+box(plane, 0, -0.05, 0, 13, 0.22, 2.1, mat(0x4e8292));
+box(plane, 0, 0.35, -3.6, 4, 0.18, 1.5, mat(0x4e8292));
+box(plane, 0, 0.1, 4.5, 1.6, 0.55, 1.5, mat(0xd6e4e5));
+plane.rotation.y = Math.PI / 2;
+plane.position.set(-65, 24, -5);
+plane.visible = false;
+
+const chute = new THREE.Group();
+player.add(chute);
+chute.position.set(0, 5.5, 0);
+chute.visible = false;
+
+const canopy = new THREE.Mesh(
+  new THREE.SphereGeometry(2.5, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+  mat(0xe84f4f)
+);
+canopy.scale.set(1.25, 0.7, 0.8);
+canopy.position.y = 1.4;
+chute.add(canopy);
+
+for (let side of [-1, 1]) {
+  for (let front of [-1, 1]) {
+    const line = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.025, 0.025, 2.3, 5), white
+    );
+    line.position.set(side * 1.55, 0.15, front * 0.8);
+    line.rotation.z = side * 0.55;
+    chute.add(line);
+  }
+}
+
+const safeRing = new THREE.Mesh(
+  new THREE.TorusGeometry(53, 0.28, 8, 100),
+  new THREE.MeshBasicMaterial({ color: 0x42e6ff })
+);
+safeRing.rotation.x = Math.PI / 2;
+safeRing.position.y = 0.2;
+scene.add(safeRing);
+
+let phase = 'menu';
+let jumpTimer = 0;
+let zoneTimer = 60;
+let zoneRadius = 53;
+let playerHeight = 24;
+let stick = { x: 0, y: 0 };
+let last = performance.now();
+let groundJumpVelocity = 0;
+let groundJumping = false;
+let animClock = 0;
+let landingPulse = 0;
+
+const status = document.getElementById('status');
+const zoneEl = document.getElementById('zone');
+const centerMsg = document.getElementById('centerMsg');
+const hint = document.getElementById('hint');
+const jumpBtn = document.getElementById('jump');
+const groundJumpBtn = document.getElementById('groundJump');
+const startBtn = document.getElementById('start');
+const restartBtn = document.getElementById('restart');
+
+function setPhase(p) {
+  phase = p;
+  startBtn.style.display = p === 'menu' ? 'block' : 'none';
+  restartBtn.style.display = p === 'landed' ? 'block' : 'none';
+  groundJumpBtn.style.display = p === 'landed' ? 'block' : 'none';
+  jumpBtn.style.display = (p === 'plane' || p === 'fall' || p === 'chute') ? 'block' : 'none';
+
+  if (p === 'plane') {
+    centerMsg.textContent = 'ESCOLHA ONDE SALTAR';
+    status.textContent = 'MINI ROYALE • NO AVIÃO';
+    jumpBtn.textContent = 'SALTAR DO AVIÃO';
+    hint.textContent = 'Toque em SALTAR quando quiser iniciar a queda.';
+  }
+  if (p === 'fall') {
+    centerMsg.textContent = 'QUEDA LIVRE';
+    status.textContent = 'MINI ROYALE • QUEDA LIVRE';
+    jumpBtn.textContent = 'ABRIR PARAQUEDAS';
+    hint.textContent = 'Direcione a queda pelo controle.';
+  }
+  if (p === 'chute') {
+    centerMsg.textContent = 'DESCENDO DE PARAQUEDAS';
+    status.textContent = 'MINI ROYALE • POUSO';
+    jumpBtn.textContent = 'PARAQUEDAS ABERTO';
+    hint.textContent = 'Use o controle para escolher o local do pouso.';
+  }
+  if (p === 'landed') {
+    centerMsg.textContent = 'VOCÊ POUSOU!';
+    status.textContent = 'MINI ROYALE • PARTIDA INICIADA';
+    jumpBtn.style.display = 'none';
+    hint.textContent = 'Use o controle para andar e toque em PULAR para dar um salto alto.';
+  }
+}
+
+function jump() {
+  if (phase === 'plane') {
+    player.position.set(plane.position.x, playerHeight, plane.position.z);
+    plane.visible = false;
+    jumpTimer = 0;
+    setPhase('fall');
+  } else if (phase === 'fall') {
+    openChute();
+  }
+}
+
+function openChute() {
+  if (phase !== 'fall') return;
+  phase = 'chute';
+  chute.visible = true;
+  setPhase('chute');
+}
+
+startBtn.addEventListener('click', function() {
+  console.log('Botão INICIAR clicado!');
+  plane.visible = true;
+  plane.position.set(-65, 24, -5);
+  player.position.set(0, 24, 0);
+  playerHeight = 24;
+  chute.visible = false;
+  zoneTimer = 60;
+  zoneRadius = 53;
+  setPhase('plane');
+});
+
+
+jumpBtn.addEventListener('click', jump);
+
+// CONTROLES DO PERSONAGEM
+const stickArea = document.getElementById('stickArea');
+const stickElement = document.getElementById('stick');
+const qualitySelect = document.getElementById('quality');
+
+let pointerId = null;
+let moveX = 0;
+let moveZ = 0;
+let velocityY = 0;
+let gameTime = 0;
+let playerSpeed = 8;
+let cameraSmooth = 0.08;
+
+function updateStick(e) {
+  const rect = stickArea.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+
+  let dx = e.clientX - cx;
+  let dy = e.clientY - cy;
+
+  const max = 36;
+  const length = Math.hypot(dx, dy);
+
+  if (length > max) {
+    dx = dx / length * max;
+    dy = dy / length * max;
+  }
+
+  stickElement.style.left = (dx + 35) + 'px';
+  stickElement.style.top = (dy + 35) + 'px';
+
+  moveX = dx / max;
+  moveZ = dy / max;
+}
+
+function resetStick() {
+  pointerId = null;
+  moveX = 0;
+  moveZ = 0;
+  stickElement.style.left = '33px';
+  stickElement.style.top = '33px';
+}
+
+stickArea.addEventListener('pointerdown', e => {
+  pointerId = e.pointerId;
+  stickArea.setPointerCapture(pointerId);
+  updateStick(e);
+});
+
+stickArea.addEventListener('pointermove', e => {
+  if (e.pointerId === pointerId) updateStick(e);
+});
+
+stickArea.addEventListener('pointerup', resetStick);
+stickArea.addEventListener('pointercancel', resetStick);
+
+// PULO NO SOLO
+groundJumpBtn.addEventListener('click', () => {
+  if (phase === 'landed' && !groundJumping) {
+    groundJumping = true;
+    groundJumpVelocity = 13;
+  }
+});
+
+// RECOMEÇAR
+restartBtn.addEventListener('click', () => {
+  player.position.set(0, 24, 0);
+  player.rotation.set(0, 0, 0);
+  playerHeight = 24;
+  groundJumpVelocity = 0;
+  groundJumping = false;
+  jumpTimer = 0;
+  zoneTimer = 60;
+  zoneRadius = 53;
+  chute.visible = false;
+  plane.visible = true;
+  plane.position.set(-65, 24, -5);
+  setPhase('plane');
+});
+
+// QUALIDADE GRÁFICA
+qualitySelect.addEventListener('change', e => {
+  quality = e.target.value;
+
+  if (quality === 'low') {
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 0.8));
+    renderer.shadowMap.enabled = false;
+    createGrass(250);
+  } else if (quality === 'medium') {
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.2));
+    renderer.shadowMap.enabled = true;
+    createGrass(650);
+  } else {
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    renderer.shadowMap.enabled = true;
+    createGrass(1200);
+  }
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+createGrass(650);
+
+// MOVIMENTAÇÃO DO AVIÃO
+function updatePlane(dt) {
+  if (phase !== 'plane') return;
+
+  plane.position.x += 10 * dt;
+  plane.position.z = -5 + Math.sin(gameTime * 0.4) * 3;
+
+  player.position.set(
+    plane.position.x,
+    plane.position.y,
+    plane.position.z
+  );
+
+  if (plane.position.x > 65) {
+    plane.position.x = -65;
+  }
+}
+
+// MOVIMENTAÇÃO DO PERSONAGEM
+function updatePlayer(dt) {
+  if (phase === 'menu') return;
+
+  const moving = Math.abs(moveX) + Math.abs(moveZ) > 0.08;
+
+  if (phase === 'fall' || phase === 'chute') {
+    player.position.x += moveX * 9 * dt;
+    player.position.z += moveZ * 9 * dt;
+
+    if (phase === 'fall') {
+      playerHeight -= 17 * dt;
+      player.position.y = Math.max(0, playerHeight);
+
+      if (playerHeight <= 0) {
+        landPlayer();
+      }
+    }
+
+    if (phase === 'chute') {
+      playerHeight -= 4.5 * dt;
+      player.position.y = Math.max(0, playerHeight);
+
+      if (playerHeight <= 0) {
+        landPlayer();
+      }
+    }
+  }
+
+  if (phase === 'landed') {
+    const speed = playerSpeed * dt;
+
+    player.position.x += moveX * speed;
+    player.position.z += moveZ * speed;
+
+    if (moving) {
+      player.rotation.y = Math.atan2(moveX, moveZ);
+
+      animClock += dt * 10;
+      legL.rotation.x = Math.sin(animClock) * 0.55;
+      legR.rotation.x = -Math.sin(animClock) * 0.55;
+      armL.rotation.x = -Math.sin(animClock) * 0.35;
+      armR.rotation.x = Math.sin(animClock) * 0.35;
+    } else {
+      legL.rotation.x *= 0.8;
+      legR.rotation.x *= 0.8;
+      armL.rotation.x *= 0.8;
+      armR.rotation.x *= 0.8;
+    }
+
+    if (groundJumping) {
+      groundJumpVelocity -= 27 * dt;
+      player.position.y += groundJumpVelocity * dt;
+
+      if (player.position.y <= 0) {
+        player.position.y = 0;
+        groundJumping = false;
+        groundJumpVelocity = 0;
+      }
+    }
+
+    player.position.x = THREE.MathUtils.clamp(
+      player.position.x, -82, 82
+    );
+
+    player.position.z = THREE.MathUtils.clamp(
+      player.position.z, -82, 82
+    );
+  }
+
+  if (phase === 'fall' || phase === 'chute') {
+    if (moving) {
+      player.rotation.y = Math.atan2(moveX, moveZ);
+    }
+  }
+}
+
+// POUSO
+function landPlayer() {
+  if (phase === 'landed') return;
+
+  playerHeight = 0;
+  player.position.y = 0;
+  chute.visible = false;
+  groundJumping = false;
+  groundJumpVelocity = 0;
+
+  landingPulse = 1;
+  setPhase('landed');
+}
+
+// CÂMERA SEGUINDO O JOGADOR
+const cameraTarget = new THREE.Vector3();
+
+function updateCamera(dt) {
+  if (phase === 'menu') {
+    cameraTarget.set(0, 30, 38);
+  } else if (phase === 'plane') {
+    cameraTarget.set(
+      plane.position.x,
+      plane.position.y + 27,
+      plane.position.z + 34
+    );
+  } else {
+    cameraTarget.set(
+      player.position.x,
+      player.position.y + 22,
+      player.position.z + 27
+    );
+  }
+
+  const smooth = 1 - Math.pow(1 - cameraSmooth, dt * 60);
+
+  camera.position.lerp(cameraTarget, smooth);
+
+  const lookTarget = new THREE.Vector3(
+    phase === 'plane' ? plane.position.x : player.position.x,
+    phase === 'plane' ? plane.position.y : player.position.y + 1,
+    phase === 'plane' ? plane.position.z : player.position.z
+  );
+
+  camera.lookAt(lookTarget);
+}
+
+// ZONA SEGURA
+function updateZone(dt) {
+  if (phase !== 'landed') return;
+
+  zoneTimer -= dt;
+
+  if (zoneTimer <= 0) {
+    zoneTimer = 60;
+    zoneRadius = Math.max(12, zoneRadius - 7);
+
+    safeRing.geometry.dispose();
+    safeRing.geometry = new THREE.TorusGeometry(
+      zoneRadius, 0.28, 8, 100
+    );
+  }
+
+  const distance = Math.sqrt(
+    player.position.x * player.position.x +
+    player.position.z * player.position.z
+  );
+
+  if (distance > zoneRadius) {
+    status.textContent = 'MINI ROYALE • FORA DA ZONA!';
+  } else {
+    status.textContent = 'MINI ROYALE • PARTIDA INICIADA';
+  }
+
+  zoneEl.textContent =
+    'Zona segura: ' + Math.ceil(zoneTimer) +
+    's • Raio: ' + Math.round(zoneRadius);
+}
+
+// ANIMAÇÃO DO PARAQUEDAS
+function updateChute() {
+  if (phase === 'chute') {
+    chute.rotation.z = -moveX * 0.12;
+    chute.rotation.x = moveZ * 0.1;
+  }
+}
+
+// REDIMENSIONAMENTO
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio, quality === 'high' ? 1.5 : 1.2)
+  );
+});
+
+// LOOP PRINCIPAL
+function animate(now) {
+  requestAnimationFrame(animate);
+
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  gameTime += dt;
+
+  updatePlane(dt);
+  updatePlayer(dt);
+  updateCamera(dt);
+  updateZone(dt);
+  updateChute();
+
+  if (landingPulse > 0) {
+    landingPulse -= dt;
+  }
+
+  renderer.render(scene, camera);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
