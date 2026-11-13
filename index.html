@@ -3,67 +3,98 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>MINI ROYALE — Protótipo</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>MINI ROYALE</title>
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#8bc7d7;font-family:Arial,sans-serif;touch-action:none}
 #game{position:fixed;inset:0}
 canvas{display:block}
-#hud{position:fixed;inset:0;pointer-events:none;color:#fff;text-shadow:0 2px 3px #263b35}
-.panel{background:#14251dcc;border:1px solid #ffffff40;border-radius:12px;padding:9px 12px;backdrop-filter:blur(5px)}
-#top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-#status{font-weight:800;font-size:14px}
-#zone{font-size:12px;margin-top:4px}
-#qualityBox{pointer-events:auto}
-select{background:#243c35;color:white;border:1px solid #ffffff55;border-radius:7px;padding:5px}
-#centerMsg{position:absolute;top:22%;left:50%;transform:translateX(-50%);font-weight:900;font-size:clamp(18px,4vw,28px);text-align:center;white-space:nowrap}
-#bottom{position:absolute;left:0;right:0;bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 16px;gap:12px}
-#stickArea{pointer-events:auto;width:118px;height:118px;border-radius:50%;background:#ffffff25;border:2px solid #ffffff80;position:relative;touch-action:none}
-#stick{position:absolute;width:48px;height:48px;border-radius:50%;background:#e8f5e9cc;border:2px solid #fff;left:33px;top:33px}
-#actions{display:flex;flex-direction:column;gap:9px;align-items:flex-end;pointer-events:auto}
-.action{border:2px solid #fff;color:#fff;background:#147fbaee;border-radius:13px;padding:13px 18px;font-weight:900;font-size:15px;min-width:132px;box-shadow:0 4px 0 #07527d}
-.action:active{transform:translateY(2px);box-shadow:0 2px 0 #07527d}
-#start{position:absolute;left:50%;top:53%;transform:translate(-50%,-50%);pointer-events:auto;background:#16a05b;border:2px solid white;color:white;font-size:18px;font-weight:900;padding:15px 25px;border-radius:14px;box-shadow:0 5px 0 #086438}
-#hint{position:absolute;bottom:145px;left:50%;transform:translateX(-50%);font-size:12px;text-align:center;white-space:nowrap}
-#restart{display:none}
+#hud{position:fixed;inset:0;pointer-events:none;color:white;text-shadow:0 2px 3px #263b35}
+.panel{background:#14251ddd;border:1px solid #ffffff50;border-radius:11px;padding:8px 10px;backdrop-filter:blur(5px)}
+#top{position:absolute;top:9px;left:9px;right:9px;display:flex;justify-content:space-between;gap:7px;align-items:flex-start}
+#status{font-size:13px;font-weight:900}
+#zone,#stats{font-size:11px;margin-top:4px}
+#healthBox{position:absolute;top:76px;left:10px;width:155px}
+#healthLabel{font-size:12px;font-weight:bold}
+#healthBar{height:10px;background:#472d2d;border:1px solid #ffffff70;border-radius:8px;overflow:hidden;margin-top:5px}
+#healthFill{height:100%;width:100%;background:#46df72;transition:width .2s}
+#weaponBox{position:absolute;right:10px;top:76px;text-align:right;min-width:115px}
+#weaponName{font-weight:900;font-size:14px}
+#ammo{font-size:12px;margin-top:4px}
+#centerMsg{position:absolute;top:25%;left:50%;transform:translateX(-50%);font-size:clamp(18px,4vw,27px);font-weight:900;text-align:center;white-space:nowrap}
+#start{position:absolute;left:50%;top:53%;transform:translate(-50%,-50%);pointer-events:auto;background:#16a05b;border:2px solid white;color:white;font-size:18px;font-weight:900;padding:15px 25px;border-radius:14px}
+#bottom{position:absolute;left:0;right:0;bottom:12px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 12px;gap:8px}
+#stickArea{pointer-events:auto;width:112px;height:112px;border-radius:50%;background:#ffffff25;border:2px solid #ffffff80;position:relative;touch-action:none;flex-shrink:0}
+#stick{position:absolute;width:48px;height:48px;border-radius:50%;background:#e8f5e9dd;border:2px solid white;left:30px;top:30px}
+#actions{display:flex;flex-direction:column;gap:7px;align-items:flex-end;pointer-events:auto}
+.action{border:2px solid white;color:white;background:#147fbaee;border-radius:12px;padding:10px 13px;font-weight:900;font-size:13px;min-width:105px;box-shadow:0 3px 0 #07527d;touch-action:manipulation}
+.action:active{transform:translateY(2px)}
+#shoot{background:#bd3838ee;min-width:116px}
+#collect{background:#d58a20ee}
+#jump{background:#269b55}
+#restart{display:none;background:#16a05b}
+#hint{position:absolute;bottom:132px;left:50%;transform:translateX(-50%);font-size:11px;text-align:center;white-space:nowrap}
+#qualityBox{pointer-events:auto;font-size:11px}
+select{background:#243c35;color:white;border:1px solid #ffffff55;border-radius:6px;padding:4px}
+#toast{position:absolute;top:43%;left:50%;transform:translate(-50%,-50%);font-weight:900;font-size:15px;background:#14251ddd;padding:9px 14px;border-radius:10px;opacity:0;transition:opacity .2s}
+#toast.show{opacity:1}
 @media(max-width:500px){
- #top{top:8px;left:8px;right:8px}
- .panel{padding:7px 9px}
- #bottom{padding:0 12px}
- #stickArea{width:108px;height:108px}
- #stick{left:29px;top:29px}
+ #top{top:6px;left:6px;right:6px}
+ .panel{padding:6px 8px}
+ #healthBox{top:68px;left:7px}
+ #weaponBox{top:68px;right:7px}
+ #bottom{padding:0 8px}
+ #stickArea{width:104px;height:104px}
+ #stick{left:27px;top:27px}
+ .action{padding:9px 10px;min-width:96px}
 }
 </style>
 </head>
 <body>
 <div id="game"></div>
 <div id="hud">
-  <div id="top">
-    <div class="panel">
-      <div id="status">MINI ROYALE • PRÉ-TEMPORADA</div>
-      <div id="zone">Zona segura: aguardando partida</div>
-    </div>
-    <div class="panel" id="qualityBox">
-      Gráficos
-      <select id="quality">
-        <option value="low">Baixo</option>
-        <option value="medium" selected>Médio</option>
-        <option value="high">Alto</option>
-      </select>
-    </div>
+ <div id="top">
+  <div class="panel">
+   <div id="status">MINI ROYALE • ILHA ROYALE</div>
+   <div id="zone">Aguardando partida</div>
+   <div id="stats">Bots: 0 • Eliminações: 0</div>
   </div>
-  <div id="centerMsg">PREPARE-SE PARA SALTAR</div>
-  <button id="start">INICIAR PARTIDA</button>
-  <div id="hint">Use o controle para direcionar o personagem durante a descida.</div>
-  <div id="bottom">
-    <div id="stickArea"><div id="stick"></div></div>
-    <div id="actions">
-      <button class="action" id="jump">SALTAR DO AVIÃO</button>
-      <button class="action" id="groundJump" style="display:none;background:#269b55;box-shadow:0 4px 0 #126335">PULAR</button>
-      <button class="action" id="restart">RECOMEÇAR</button>
-    </div>
+  <div class="panel" id="qualityBox">
+   Gráficos
+   <select id="quality">
+    <option value="low">Baixo</option>
+    <option value="medium" selected>Médio</option>
+    <option value="high">Alto</option>
+   </select>
   </div>
+ </div>
+
+ <div class="panel" id="healthBox">
+  <div id="healthLabel">VIDA: 100/100</div>
+  <div id="healthBar"><div id="healthFill"></div></div>
+ </div>
+
+ <div class="panel" id="weaponBox">
+  <div id="weaponName">PISTOLA</div>
+  <div id="ammo">Munição: 24</div>
+ </div>
+
+ <div id="centerMsg">UMA PEQUENA IDEIA, UM GRANDE MUNDO</div>
+ <button id="start">INICIAR PARTIDA</button>
+ <div id="hint">Explore a ilha, encontre equipamentos e enfrente os bots.</div>
+ <div id="toast"></div>
+
+ <div id="bottom">
+  <div id="stickArea"><div id="stick"></div></div>
+  <div id="actions">
+   <button class="action" id="shoot">ATIRAR</button>
+   <button class="action" id="collect">COLETAR</button>
+   <button class="action" id="switch">TROCAR ARMA</button>
+   <button class="action" id="jump">PULAR</button>
+   <button class="action" id="restart">RECOMEÇAR</button>
+  </div>
+ </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
@@ -71,36 +102,30 @@ select{background:#243c35;color:white;border:1px solid #ffffff55;border-radius:7
 (()=>{
 'use strict';
 
-const mount=document.getElementById('game');
+const $=id=>document.getElementById(id);
+const mount=$('game');
 let quality='medium';
 
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x91cbdc);
-scene.fog=new THREE.Fog(0x91cbdc,95,220);
+scene.fog=new THREE.Fog(0x91cbdc,100,230);
 
 const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,500);
-camera.position.set(0,36,43);
-
-const renderer=new THREE.WebGLRenderer({
- antialias:true,
- powerPreference:'high-performance'
-});
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 renderer.setSize(innerWidth,innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.35));
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.3));
 renderer.shadowMap.enabled=true;
 renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.12;
+renderer.toneMappingExposure=1.1;
 mount.appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xe8f8ff,0x536b42,1.65));
-
-const fillLight=new THREE.DirectionalLight(0xc4e4ff,.55);
+scene.add(new THREE.HemisphereLight(0xe8f8ff,0x536b42,1.7));
+const fillLight=new THREE.DirectionalLight(0xc4e4ff,.6);
 fillLight.position.set(35,25,-35);
 scene.add(fillLight);
-
-const sun=new THREE.DirectionalLight(0xffe4b5,2.6);
+const sun=new THREE.DirectionalLight(0xffe4b5,2.2);
 sun.position.set(-35,65,25);
 sun.castShadow=true;
 sun.shadow.mapSize.set(1024,1024);
@@ -111,35 +136,23 @@ sun.shadow.camera.bottom=-95;
 scene.add(sun);
 
 const mat=(c,r=.9)=>new THREE.MeshStandardMaterial({color:c,roughness:r});
-const grassMat=mat(0x67ad50);
-const darkGrass=mat(0x4c9145);
-const sandMat=mat(0xe8d39b);
-const roadMat=mat(0x777b78);
-const white=mat(0xf1eadb);
-const roof1=mat(0xd8754d);
-const roof2=mat(0x4b8f9b);
-const wood=mat(0x9b6842);
-const leaf=mat(0x39854a);
-const leaf2=mat(0x65a94c);
-const trunk=mat(0x795236);
+const grassMat=mat(0x67ad50),sandMat=mat(0xe8d39b);
+const roadMat=mat(0x777b78),white=mat(0xf1eadb);
+const roof1=mat(0xd8754d),roof2=mat(0x4b8f9b);
+const wood=mat(0x9b6842),leaf=mat(0x39854a);
+const leaf2=mat(0x65a94c),trunk=mat(0x795236);
 const rockMat=mat(0x858d82);
 
-const ground=new THREE.Mesh(
- new THREE.PlaneGeometry(180,180),grassMat
-);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(180,180),grassMat);
 ground.rotation.x=-Math.PI/2;
 ground.receiveShadow=true;
 scene.add(ground);
 
-const islandEdge=new THREE.Mesh(
- new THREE.CylinderGeometry(88,92,5,64),sandMat
-);
+const islandEdge=new THREE.Mesh(new THREE.CylinderGeometry(88,92,5,64),sandMat);
 islandEdge.position.y=-2.8;
 scene.add(islandEdge);
 
-const ocean=new THREE.Mesh(
- new THREE.PlaneGeometry(500,500),mat(0x3c9bb6,.35)
-);
+const ocean=new THREE.Mesh(new THREE.PlaneGeometry(500,500),mat(0x3c9bb6,.35));
 ocean.rotation.x=-Math.PI/2;
 ocean.position.y=-3.2;
 scene.add(ocean);
@@ -153,219 +166,158 @@ function box(parent,x,y,z,sx,sy,sz,m){
  return o;
 }
 
+const obstacles=[];
+function addObstacle(x,z,sx,sz){
+ obstacles.push({x,z,sx,sz});
+}
+
 function makeHouse(x,z,roof=roof1,s=1){
  const g=new THREE.Group();
  g.position.set(x,0,z);
  scene.add(g);
-
  box(g,0,1.25,0,7*s,2.5*s,6*s,white);
-
- const r=box(g,0,2.85*s,0,7.8*s,.65*s,6.8*s,roof);
- r.rotation.z=.04;
-
+ box(g,0,2.85*s,0,7.8*s,.65*s,6.8*s,roof);
  box(g,0,.75*s,3.04*s,1.2*s,1.5*s,.12*s,wood);
-
  for(let i=-1;i<=1;i+=2){
   box(g,i*2*s,1.55*s,3.08*s,1.1*s,.8*s,.13*s,mat(0x8ac8d4));
  }
-
- box(g,0,2.15*s,-3.12*s,1.5*s,.5*s,.12*s,roof);
+ addObstacle(x,z,7*s,6*s);
 }
 
-function tree(x,z,scale=1){
+function tree(x,z,s=1){
  const g=new THREE.Group();
  g.position.set(x,0,z);
- g.scale.setScalar(scale);
+ g.scale.setScalar(s);
  scene.add(g);
-
- const t=new THREE.Mesh(
-  new THREE.CylinderGeometry(.35,.5,3,7),trunk
- );
+ const t=new THREE.Mesh(new THREE.CylinderGeometry(.35,.5,3,7),trunk);
  t.position.y=1.5;
  t.castShadow=true;
  g.add(t);
-
- const a=new THREE.Mesh(
-  new THREE.IcosahedronGeometry(2.1,1),leaf
- );
+ const a=new THREE.Mesh(new THREE.IcosahedronGeometry(2.1,1),leaf);
  a.position.y=3.4;
  a.castShadow=true;
  g.add(a);
-
- const b=new THREE.Mesh(
-  new THREE.IcosahedronGeometry(1.45,1),leaf2
- );
+ const b=new THREE.Mesh(new THREE.IcosahedronGeometry(1.45,1),leaf2);
  b.position.set(.8,3.1,.3);
  b.castShadow=true;
  g.add(b);
+ g.userData.tree=true;
+ return g;
 }
 
 function rock(x,z,s=1){
- const o=new THREE.Mesh(
-  new THREE.DodecahedronGeometry(s,0),rockMat
- );
+ const o=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),rockMat);
  o.position.set(x,s*.55,z);
  o.scale.set(1,.7,1.2);
  o.castShadow=true;
  scene.add(o);
+ addObstacle(x,z,s*1.5,s*1.5);
 }
 
-// Estradas
-const road1=box(scene,0,.035,0,12,.08,150,roadMat);
-const road2=box(scene,0,.04,-20,130,.08,8,roadMat);
-const road3=box(scene,-35,.045,22,65,.08,7,roadMat);
-road3.rotation.y=-.12;
+box(scene,0,.035,0,12,.08,150,roadMat);
+box(scene,0,.04,-20,130,.08,8,roadMat);
+box(scene,-35,.045,22,65,.08,7,roadMat);
 
-for(let i=-3;i<=3;i++){
- box(scene,i*2,.09,0,.12,.02,150,mat(0x999b91));
-}
-
-// Casas
 for(let i=0;i<10;i++){
- makeHouse(
-  -47+(i%5)*12,
-  -42+Math.floor(i/5)*13,
-  i%2?roof1:roof2,
-  .8
- );
+ makeHouse(-47+(i%5)*12,-42+Math.floor(i/5)*13,i%2?roof1:roof2,.8);
 }
-
 for(let i=0;i<6;i++){
- makeHouse(
-  25+(i%3)*13,
-  -38+Math.floor(i/3)*14,
-  i%2?roof2:roof1,
-  1
- );
+ makeHouse(25+(i%3)*13,-38+Math.floor(i/3)*14,i%2?roof2:roof1,1);
 }
 
-// Galpões
 for(let i=0;i<3;i++){
  const x=28+i*16;
  box(scene,x,2,25,13,4,11,mat(0xc5c5b6));
  box(scene,x,4.2,25,13,.7,11,roof2);
  box(scene,x,1.2,30.6,3,2.4,.2,mat(0x555e62));
+ addObstacle(x,25,13,11);
 }
 
-// Prédios
 for(let i=0;i<4;i++){
  const x=-50+(i%2)*13;
  const z=27+Math.floor(i/2)*14;
  box(scene,x,3,z,9,6,9,white);
  box(scene,x,6.3,z,9,.8,9,roof1);
+ addObstacle(x,z,9,9);
 }
 
-// Floresta
-for(let i=0;i<48;i++){
- let x=(Math.random()-.5)*145;
- let z=(Math.random()-.5)*145;
+const trees=[];
+for(let i=0;i<52;i++){
+ const x=(Math.random()-.5)*145;
+ const z=(Math.random()-.5)*145;
  if(Math.abs(x)<18||Math.abs(z)<12)continue;
- tree(x,z,.65+Math.random()*.45);
+ trees.push(tree(x,z,.65+Math.random()*.45));
 }
-
 for(let i=0;i<30;i++){
- let x=(Math.random()-.5)*140;
- let z=(Math.random()-.5)*140;
+ const x=(Math.random()-.5)*140;
+ const z=(Math.random()-.5)*140;
  if(Math.abs(x)<15&&Math.abs(z)<15)continue;
  rock(x,z,.4+Math.random()*.65);
 }
 
-// Manchas de terreno
-for(let i=0;i<34;i++){
+for(let i=0;i<28;i++){
  const patch=new THREE.Mesh(
   new THREE.CircleGeometry(2.5+Math.random()*5,18),
   mat(i%2?0x78b45a:0x5d9e4b)
  );
  patch.rotation.x=-Math.PI/2;
- patch.position.set(
-  (Math.random()-.5)*155,
-  .012,
-  (Math.random()-.5)*155
- );
+ patch.position.set((Math.random()-.5)*155,.012,(Math.random()-.5)*155);
  patch.scale.set(1,.65,1);
  scene.add(patch);
 }
 
-// Grama
 let grassMesh=null;
-
 function createGrass(count){
  if(grassMesh){
   scene.remove(grassMesh);
   grassMesh.geometry.dispose();
-  grassMesh=null;
  }
-
  const geo=new THREE.ConeGeometry(.11,.65,3);
  geo.translate(0,.32,0);
-
- grassMesh=new THREE.InstancedMesh(geo,darkGrass,count);
+ grassMesh=new THREE.InstancedMesh(geo,mat(0x4c9145),count);
  const dummy=new THREE.Object3D();
-
  for(let i=0;i<count;i++){
   let x=(Math.random()-.5)*168;
   let z=(Math.random()-.5)*168;
-
   if(Math.abs(x)<8&&Math.abs(z)<8)x+=18;
-
   dummy.position.set(x,.02,z);
   dummy.rotation.y=Math.random()*Math.PI;
-
-  let s=.55+Math.random()*.8;
+  const s=.55+Math.random()*.8;
   dummy.scale.set(s,s,s);
   dummy.updateMatrix();
-
   grassMesh.setMatrixAt(i,dummy.matrix);
  }
-
- grassMesh.receiveShadow=true;
  scene.add(grassMesh);
 }
+createGrass(2200);
 
-// Personagem
+// Personagem do jogador
 const player=new THREE.Group();
 scene.add(player);
-
 const bodyMat=mat(0x253c45);
 const armorMat=mat(0x344f59);
-
+const visorMat=mat(0x1b4e60,.25);
 const neonMat=new THREE.MeshStandardMaterial({
- color:0x9dff4d,
- emissive:0x347d13,
- emissiveIntensity:.7
+ color:0x9dff4d,emissive:0x347d13,emissiveIntensity:.7
 });
 
-const visorMat=new THREE.MeshStandardMaterial({
- color:0x1b4e60,
- metalness:.35,
- roughness:.2
-});
-
-const torso=box(player,0,1.35,0,1.05,1.25,.62,armorMat);
+box(player,0,1.35,0,1.05,1.25,.62,armorMat);
 box(player,0,2.35,0,.95,.9,.88,bodyMat);
 box(player,0,2.42,.46,.72,.35,.08,visorMat);
-
 const armL=box(player,-.56,1.45,0,.28,.85,.35,bodyMat);
 const armR=box(player,.56,1.45,0,.28,.85,.35,bodyMat);
 const legL=box(player,-.28,.45,0,.34,.85,.4,bodyMat);
 const legR=box(player,.28,.45,0,.34,.85,.4,bodyMat);
-
 box(player,0,1.5,-.42,.75,.7,.22,neonMat);
-
 const gun=box(player,.72,1.35,.35,.95,.18,.22,mat(0x252c31));
 gun.rotation.y=-.2;
-
-player.position.set(0,0,0);
 
 // Avião
 const plane=new THREE.Group();
 scene.add(plane);
-
 box(plane,0,0,0,2.1,.8,9,mat(0xe8e9e4));
 box(plane,0,-.05,0,13,.22,2.1,mat(0x4e8292));
 box(plane,0,.35,-3.6,4,.18,1.5,mat(0x4e8292));
-box(plane,0,.1,4.5,1.6,.55,1.5,mat(0xd6e4e5));
-
 plane.rotation.y=Math.PI/2;
 plane.position.set(-65,24,-5);
 plane.visible=false;
@@ -375,7 +327,6 @@ const chute=new THREE.Group();
 player.add(chute);
 chute.position.set(0,5.5,0);
 chute.visible=false;
-
 const canopy=new THREE.Mesh(
  new THREE.SphereGeometry(2.5,16,10,0,Math.PI*2,0,Math.PI/2),
  mat(0xe84f4f)
@@ -383,19 +334,16 @@ const canopy=new THREE.Mesh(
 canopy.scale.set(1.25,.7,.8);
 canopy.position.y=1.4;
 chute.add(canopy);
-
-for(let side of [-1,1]){
- for(let front of [-1,1]){
-  const line=new THREE.Mesh(
-   new THREE.CylinderGeometry(.025,.025,2.3,5),white
-  );
+for(const side of [-1,1]){
+ for(const front of [-1,1]){
+  const line=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,2.3,5),white);
   line.position.set(side*1.55,.15,front*.8);
   line.rotation.z=side*.55;
   chute.add(line);
  }
 }
 
-// Safe Zone
+// Zona segura
 const safeRing=new THREE.Mesh(
  new THREE.TorusGeometry(53,.28,8,100),
  new THREE.MeshBasicMaterial({color:0x42e6ff})
@@ -404,369 +352,301 @@ safeRing.rotation.x=Math.PI/2;
 safeRing.position.y=.2;
 scene.add(safeRing);
 
-// Estado
+// Armas
+const weapons=[
+ {name:'PISTOLA',ammo:24,damage:25,range:32,cooldown:.42},
+ {name:'RIFLE',ammo:60,damage:16,range:48,cooldown:.16},
+ {name:'FACA',ammo:Infinity,damage:38,range:3.4,cooldown:.55}
+];
+let weaponIndex=0;
+let fireCooldown=0;
+let health=100;
+let kills=0;
 let phase='menu';
-let jumpTimer=0;
-let zoneTimer=60;
 let zoneRadius=53;
+let zoneTimer=60;
 let playerHeight=24;
-let stick={x:0,y:0};
-let last=performance.now();
-let groundJumpVelocity=0;
-let groundJumping=false;
+let jumpVelocity=0;
+let jumping=false;
 let animClock=0;
-let landingPulse=0;
+let last=performance.now();
+let stick={x:0,y:0};
+let bots=[];
+let loot=[];
+let bullets=[];
+let toastTimer=0;
+let gameTime=0;
 
-const status=document.getElementById('status');
-const zone=document.getElementById('zone');
-const centerMsg=document.getElementById('centerMsg');
-const hint=document.getElementById('hint');
-const jumpBtn=document.getElementById('jump');
-const groundJumpBtn=document.getElementById('groundJump');
-const startBtn=document.getElementById('start');
-const restartBtn=document.getElementById('restart');
+function say(message){
+ $('toast').textContent=message;
+ $('toast').classList.add('show');
+ toastTimer=1.6;
+}
+
+function updateHUD(){
+ $('healthLabel').textContent='VIDA: '+Math.ceil(health)+'/100';
+ $('healthFill').style.width=Math.max(0,health)+'%';
+ $('weaponName').textContent=weapons[weaponIndex].name;
+ const w=weapons[weaponIndex];
+ $('ammo').textContent=w.ammo===Infinity?'Munição: ilimitada':'Munição: '+w.ammo;
+ $('stats').textContent='Bots: '+bots.filter(b=>b.alive).length+' • Eliminações: '+kills;
+}
 
 function setPhase(p){
  phase=p;
+ $('start').style.display=p==='menu'?'block':'none';
+ $('restart').style.display=(p==='dead'||p==='won')?'block':'none';
+ $('centerMsg').textContent=
+  p==='menu'?'UMA PEQUENA IDEIA, UM GRANDE MUNDO':
+  p==='plane'?'ESCOLHA ONDE POUSAR':
+  p==='fall'?'QUEDA LIVRE':
+  p==='chute'?'DESCENDO DE PARAQUEDAS':
+  p==='landed'?'SOBREVIVA!':
+  p==='dead'?'VOCÊ FOI ELIMINADO':
+  p==='won'?'VITÓRIA ROYALE!':'';
+ $('hint').textContent=
+  p==='menu'?'Entre na ilha e prepare-se para a batalha!':
+  p==='landed'?'Colete equipamentos, derrote os bots e fique na zona segura.':
+  p==='dead'?'Toque em RECOMEÇAR para tentar novamente.':
+  p==='won'?'Você derrotou todos os bots!':'Use o joystick para direcionar seu personagem.';
+ $('jump').style.display=['plane','fall','chute','landed'].includes(p)?'block':'none';
+ $('shoot').style.display=p==='landed'?'block':'none';
+ $('switch').style.display=p==='landed'?'block':'none';
+ $('collect').style.display=p==='landed'?'block':'none';
+}
 
- startBtn.style.display=p==='menu'?'block':'none';
- restartBtn.style.display=p==='landed'?'block':'none';
- groundJumpBtn.style.display=p==='landed'?'block':'none';
+function createBot(x,z){
+ const g=new THREE.Group();
+ const bm=mat(0x9b3939);
+ const dark=mat(0x452b2b);
+ box(g,0,1.25,0,.9,1.15,.65,bm);
+ box(g,0,2.15,0,.85,.8,.8,dark);
+ box(g,0,2.18,.42,.6,.25,.08,mat(0xe9c35a));
+ box(g,-.52,1.35,0,.25,.75,.3,bm);
+ box(g,.52,1.35,0,.25,.75,.3,bm);
+ box(g,-.25,.42,0,.3,.8,.35,dark);
+ box(g,.25,.42,0,.3,.8,.35,dark);
+ g.position.set(x,0,z);
+ scene.add(g);
+ return {group:g,x,z,health:100,alive:true,cooldown:Math.random(),speed:1.6+Math.random()*.55};
+}
 
- jumpBtn.style.display=
-  (p==='plane'||p==='fall'||p==='chute')?'block':'none';
+function createLoot(x,z,type){
+ const colors={med:0x35d46a,ammo:0xe6bd35,rifle:0x4aa7dc,armor:0x9a73d6};
+ const g=new THREE.Group();
+ const base=new THREE.Mesh(
+  new THREE.BoxGeometry(.9,.7,.9),
+  mat(colors[type]||0xe6bd35)
+ );
+ base.position.y=.55;
+ base.castShadow=true;
+ g.add(base);
+ const cross=box(g,0,1.05,0,.65,.12,.12,white);
+ if(type==='med')box(g,0,1.05,0,.12,.12,.65,white);
+ g.position.set(x,0,z);
+ scene.add(g);
+ loot.push({group:g,type,x,z});
+}
 
- if(p==='plane'){
-  centerMsg.textContent='ESCOLHA ONDE SALTAR';
-  status.textContent='MINI ROYALE • NO AVIÃO';
-  jumpBtn.textContent='SALTAR DO AVIÃO';
-  hint.textContent='Toque em SALTAR quando quiser iniciar a queda.';
+function clearEntities(){
+ for(const b of bots)scene.remove(b.group);
+ for(const l of loot)scene.remove(l.group);
+ for(const b of bullets)scene.remove(b.mesh);
+ bots=[];loot=[];bullets=[];
+}
+
+function startGame(){
+ clearEntities();
+ health=100;kills=0;
+ zoneRadius=53;zoneTimer=60;
+ weaponIndex=0;
+ weapons[0].ammo=24;weapons[1].ammo=60;
+ fireCooldown=0;
+ player.position.set(0,24,0);
+ player.rotation.set(0,0,0);
+ playerHeight=24;
+ jumping=false;
+ jumpVelocity=0;
+ chute.visible=false;
+ plane.visible=true;
+ plane.position.set(-65,24,-5);
+ gameTime=0;
+ for(let i=0;i<9;i++){
+  let x=(Math.random()-.5)*125;
+  let z=(Math.random()-.5)*125;
+  if(Math.hypot(x,z)<18){x+=25;}
+  bots.push(createBot(x,z));
  }
-
- if(p==='fall'){
-  centerMsg.textContent='QUEDA LIVRE';
-  status.textContent='MINI ROYALE • QUEDA LIVRE';
-  jumpBtn.textContent='ABRIR PARAQUEDAS';
-  hint.textContent='Direcione a queda pelo controle.';
+ const types=['med','ammo','ammo','rifle','med','ammo','armor','ammo','med','rifle','ammo','med'];
+ for(let i=0;i<types.length;i++){
+  let x=(Math.random()-.5)*135;
+  let z=(Math.random()-.5)*135;
+  createLoot(x,z,types[i]);
  }
-
- if(p==='chute'){
-  centerMsg.textContent='DESCENDO DE PARAQUEDAS';
-  status.textContent='MINI ROYALE • POUSO';
-  jumpBtn.textContent='PARAQUEDAS ABERTO';
-  hint.textContent='Use o controle para escolher o local do pouso.';
- }
-
- if(p==='landed'){
-  centerMsg.textContent='VOCÊ POUSOU!';
-  status.textContent='MINI ROYALE • PARTIDA INICIADA';
-  jumpBtn.style.display='none';
-  hint.textContent='Use o controle para andar e toque em PULAR para dar um salto alto.';
- }
+ setPhase('plane');
+ updateHUD();
 }
 
 function jump(){
  if(phase==='plane'){
-  player.position.set(plane.position.x,playerHeight,plane.position.z);
+  player.position.set(plane.position.x,24,plane.position.z);
   plane.visible=false;
-  jumpTimer=0;
   setPhase('fall');
  }else if(phase==='fall'){
-  openChute();
+  chute.visible=true;
+  setPhase('chute');
+ }else if(phase==='chute'){
+  // Mantém o paraquedas aberto durante a descida.
+ }else if(phase==='landed'&&!jumping){
+  jumping=true;
+  jumpVelocity=12;
  }
 }
 
-function openChute(){
- if(phase!=='fall')return;
- phase='chute';
- chute.visible=true;
- setPhase('chute');
-}
-
-startBtn.onclick=()=>{
- plane.visible=true;
- plane.position.set(-65,24,-5);
- player.position.set(0,24,0);
- playerHeight=24;
+function land(){
+ player.position.y=0;
+ playerHeight=0;
  chute.visible=false;
- zoneTimer=60;
- zoneRadius=53;
- setPhase('plane');
-};
-
-jumpBtn.onclick=jump;
-
-groundJumpBtn.onclick=()=>{
- if(phase==='landed'&&!groundJumping){
-  groundJumping=true;
-  groundJumpVelocity=13.5;
-  player.userData.jumpStart=player.position.y;
- }
-};
-
-restartBtn.onclick=()=>{
- player.position.set(0,0,0);
  plane.visible=false;
- chute.visible=false;
- playerHeight=24;
- zoneTimer=60;
- zoneRadius=53;
- groundJumping=false;
- groundJumpVelocity=0;
+ setPhase('landed');
+ say('Pouso realizado!');
+}
+
+function nearObstacle(x,z){
+ for(const o of obstacles){
+  if(Math.abs(x-o.x)<o.sx/2+.65&&Math.abs(z-o.z)<o.sz/2+.65)return true;
+ }
+ return false;
+}
+
+function movePlayer(dx,dz){
+ let nx=THREE.MathUtils.clamp(player.position.x+dx,-82,82);
+ let nz=THREE.MathUtils.clamp(player.position.z+dz,-82,82);
+ if(!nearObstacle(nx,player.position.z))player.position.x=nx;
+ if(!nearObstacle(player.position.x,nz))player.position.z=nz;
+}
+
+function nearestBot(maxDistance){
+ let best=null,dist=maxDistance;
+ for(const b of bots){
+  if(!b.alive)continue;
+  const d=Math.hypot(b.x-player.position.x,b.z-player.position.z);
+  if(d<dist){dist=d;best=b;}
+ }
+ return best;
+}
+
+function shoot(){
+ if(phase!=='landed'||health<=0)return;
+ const w=weapons[weaponIndex];
+ if(w.ammo===0){
+  say('Sem munição! Procure caixas.');
+  return;
+ }
+ if(w.ammo!==Infinity)w.ammo--;
+ const target=nearestBot(w.range);
+ if(target){
+  const dx=target.x-player.position.x;
+  const dz=target.z-player.position.z;
+  player.rotation.y=Math.atan2(dx,dz);
+  target.health-=w.damage;
+  target.group.position.y=.08;
+  setTimeout(()=>{if(target.alive)target.group.position.y=0},80);
+  if(target.health<=0){
+   target.alive=false;
+   scene.remove(target.group);
+   kills++;
+   say('BOT ELIMINADO!');
+   if(Math.random()<.8)createLoot(target.x,target.z,Math.random()<.5?'ammo':'med');
+  }else{
+   say('ACERTOU!');
+  }
+ }else{
+  say(w.name==='FACA'?'Nenhum inimigo perto!':'Tiro disparado!');
+ }
+ updateHUD();
+}
+
+function switchWeapon(){
+ weaponIndex=(weaponIndex+1)%weapons.length;
+ say('Equipado: '+weapons[weaponIndex].name);
+ updateHUD();
+}
+
+function collect(){
+ if(phase!=='landed')return;
+ let closest=null,dist=3.5;
+ for(const l of loot){
+  const d=Math.hypot(l.x-player.position.x,l.z-player.position.z);
+  if(d<dist){dist=d;closest=l;}
+ }
+ if(!closest){
+  say('Nenhum item por perto!');
+  return;
+ }
+ if(closest.type==='med'){
+  health=Math.min(100,health+35);
+  say('Kit médico: +35 de vida');
+ }else if(closest.type==='ammo'){
+  weapons[0].ammo+=12;
+  weapons[1].ammo+=25;
+  say('Munição coletada!');
+ }else if(closest.type==='rifle'){
+  weaponIndex=1;
+  weapons[1].ammo+=25;
+  say('Rifle coletado!');
+ }else{
+  health=Math.min(100,health+20);
+  say('Equipamento coletado!');
+ }
+ scene.remove(closest.group);
+ loot=loot.filter(l=>l!==closest);
+ updateHUD();
+}
+
+$('start').onclick=startGame;
+$('jump').onclick=jump;
+$('shoot').onclick=shoot;
+$('switch').onclick=switchWeapon;
+$('collect').onclick=collect;
+$('restart').onclick=()=>{
+ player.position.set(0,0,0);
+ chute.visible=false;plane.visible=false;
+ health=100;
+ updateHUD();
  setPhase('menu');
- centerMsg.textContent='PREPARE-SE PARA SALTAR';
- status.textContent='MINI ROYALE • PRÉ-TEMPORADA';
- zone.textContent='Zona segura: aguardando partida';
+ $('zone').textContent='Aguardando partida';
+ clearEntities();
 };
 
-document.getElementById('quality').onchange=e=>{
+$('quality').onchange=e=>{
  quality=e.target.value;
-
- const d=quality==='low'?700:
-         quality==='medium'?2200:5200;
-
- createGrass(d);
-
- renderer.setPixelRatio(
-  Math.min(devicePixelRatio,
-   quality==='low'?.8:
-   quality==='medium'?1.2:1.6
-  )
- );
-
+ const count=quality==='low'?700:quality==='medium'?2200:5200;
+ createGrass(count);
+ renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='low'?.8:quality==='medium'?1.2:1.6));
  renderer.shadowMap.enabled=quality!=='low';
-
- sun.shadow.mapSize.set(
-  quality==='high'?2048:1024,
-  quality==='high'?2048:1024
- );
-
  renderer.setSize(innerWidth,innerHeight);
 };
 
-createGrass(2200);
-
 // Joystick
-const area=document.getElementById('stickArea');
-const knob=document.getElementById('stick');
+const area=$('stickArea');
+const knob=$('stick');
 let active=false;
-
 function moveStick(e){
  const r=area.getBoundingClientRect();
- const cx=r.left+r.width/2;
- const cy=r.top+r.height/2;
-
- let dx=e.clientX-cx;
- let dy=e.clientY-cy;
-
- const len=Math.hypot(dx,dy);
- const max=35;
-
- if(len>max){
-  dx=dx/len*max;
-  dy=dy/len*max;
- }
-
+ let dx=e.clientX-(r.left+r.width/2);
+ let dy=e.clientY-(r.top+r.height/2);
+ const len=Math.hypot(dx,dy),max=34;
+ if(len>max){dx=dx/len*max;dy=dy/len*max;}
  stick.x=dx/max;
  stick.y=dy/max;
-
  knob.style.transform=`translate(${dx}px,${dy}px)`;
 }
-
 area.addEventListener('pointerdown',e=>{
  active=true;
  area.setPointerCapture(e.pointerId);
  moveStick(e);
 });
-
-area.addEventListener('pointermove',e=>{
- if(active)moveStick(e);
-});
-
+area.addEventListener('pointermove',e=>{if(active)moveStick(e)});
 function release(){
- active=false;
- stick.x=0;
- stick.y=0;
- knob.style.transform='translate(0,0)';
-}
-
-area.addEventListener('pointerup',release);
-area.addEventListener('pointercancel',release);
-
-// Teclado
-window.addEventListener('keydown',e=>{
- if(e.code==='Space')jump();
- if(e.code==='ArrowLeft'||e.code==='KeyA')stick.x=-1;
- if(e.code==='ArrowRight'||e.code==='KeyD')stick.x=1;
- if(e.code==='ArrowUp'||e.code==='KeyW')stick.y=-1;
- if(e.code==='ArrowDown'||e.code==='KeyS')stick.y=1;
-});
-
-window.addEventListener('keyup',e=>{
- if(['ArrowLeft','ArrowRight','KeyA','KeyD'].includes(e.code))stick.x=0;
- if(['ArrowUp','ArrowDown','KeyW','KeyS'].includes(e.code))stick.y=0;
-});
-
-// Atualização do jogo
-function update(dt){
- animClock+=dt;
-
- if(phase==='plane'){
-  plane.position.x+=dt*8;
-  plane.position.z+=dt*1.2;
-  player.position.x=plane.position.x*.08;
-  player.position.z=plane.position.z;
-
-  if(plane.position.x>65)plane.position.x=-65;
- }
-
- if(chute.visible){
-  chute.rotation.z=Math.sin(animClock*2.1)*.07;
-  chute.rotation.x=Math.cos(animClock*1.7)*.045;
- }
-
- if(landingPulse>0){
-  landingPulse=Math.max(0,landingPulse-dt);
-  player.scale.y=1-landingPulse*.65;
-  player.scale.x=1+landingPulse*.22;
-  player.scale.z=1+landingPulse*.22;
- }else{
-  player.scale.lerp(new THREE.Vector3(1,1,1),.18);
- }
-
- if(phase==='fall'||phase==='chute'){
-  const speed=phase==='fall'?13:4.2;
-
-  player.position.x+=stick.x*dt*(phase==='fall'?7:10);
-  player.position.z+=stick.y*dt*(phase==='fall'?7:10);
-
-  player.position.x=THREE.MathUtils.clamp(player.position.x,-78,78);
-  player.position.z=THREE.MathUtils.clamp(player.position.z,-78,78);
-
-  const airSwing=Math.sin(animClock*8)*.13;
-
-  armL.rotation.x=phase==='fall'?
-   -.65+airSwing:-.25+airSwing;
-
-  armR.rotation.x=phase==='fall'?
-   -.65-airSwing:-.25-airSwing;
-
-  legL.rotation.x=phase==='fall'?
-   .25+airSwing:.08;
-
-  legR.rotation.x=phase==='fall'?
-   .25-airSwing:.08;
-
-  player.rotation.z=THREE.MathUtils.lerp(
-   player.rotation.z,-stick.x*.12,.08
-  );
-
-  playerHeight=Math.max(0,playerHeight-speed*dt);
-  player.position.y=playerHeight;
-
-  if(phase==='fall'){
-   jumpTimer+=dt;
-   if(jumpTimer>1.6)openChute();
-  }
-
-  if(playerHeight<=0){
-   player.position.y=0;
-   chute.visible=false;
-   setPhase('landed');
-  }
- }
-
- if(phase==='landed'){
-  const moving=Math.hypot(stick.x,stick.y)>.08;
-
-  player.position.x+=stick.x*dt*7;
-  player.position.z+=stick.y*dt*7;
-
-  player.position.x=THREE.MathUtils.clamp(player.position.x,-78,78);
-  player.position.z=THREE.MathUtils.clamp(player.position.z,-78,78);
-
-  if(groundJumping){
-   groundJumpVelocity-=28*dt;
-   player.position.y+=groundJumpVelocity*dt;
-
-   if(player.position.y<=0){
-    player.position.y=0;
-    groundJumping=false;
-    groundJumpVelocity=0;
-    landingPulse=.22;
-   }
-  }
-
-  const run=moving&&!groundJumping?
-   Math.sin(animClock*12)*.48:0;
-
-  legL.rotation.x=run;
-  legR.rotation.x=-run;
-  armL.rotation.x=-run*.7;
-  armR.rotation.x=run*.7;
-
-  if(moving){
-   player.rotation.y=THREE.MathUtils.lerp(
-    player.rotation.y,
-    Math.atan2(stick.x,stick.y||.0001),
-    .12
-   );
-  }
- }
-
- if(phase!=='menu'){
-  zoneTimer-=dt;
-
-  if(zoneTimer<=0){
-   zoneTimer=0;
-   zoneRadius=Math.max(12,zoneRadius-dt*.7);
-  }
-
-  zoneTimer=Math.max(0,zoneTimer);
-
-  safeRing.scale.set(zoneRadius/53,zoneRadius/53,1);
-
-  zone.textContent=
-   `Zona segura fecha em ${Math.ceil(zoneTimer)}s • raio ${Math.round(zoneRadius)}m`;
- }
-
- const target=new THREE.Vector3(
-  player.position.x,
-  Math.max(0,player.position.y),
-  player.position.z
- );
-
- const desired=new THREE.Vector3(
-  target.x+1,
-  target.y+34,
-  target.z+40
- );
-
- camera.position.lerp(desired,.085);
- camera.lookAt(target);
-}
-
-function loop(now){
- requestAnimationFrame(loop);
-
- const dt=Math.min((now-last)/1000,.04);
- last=now;
-
- update(dt);
- renderer.render(scene,camera);
-}
-
-requestAnimationFrame(loop);
-
-window.addEventListener('resize',()=>{
- camera.aspect=innerWidth/innerHeight;
- camera.updateProjectionMatrix();
- renderer.setSize(innerWidth,innerHeight);
-});
-
-setPhase('menu');
-
-})();
-</script>
-</body>
-</html>
+ activ
